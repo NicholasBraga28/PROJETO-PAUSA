@@ -62,7 +62,9 @@ const VARIANTES = {
   original: { mesa: 295, mesaY: 178, cinta: 533, cintaY: 440, bicoY: 1100, espaco: 40, palavra: 1 },
   // diamante mais estreito que a palavra (escolhido pelo dono): as pontas do tampo caem nos vãos
   // P|A e S|A, e a faixa desce até abaixo do sorriso para o bico reaparecer só depois dele
-  menor:    { mesa: 113, mesaY: 227, cinta: 205, cintaY: 327, bicoY: 900, espaco: 22, palavra: 1, faixa: [312, 668] },
+  // bico mais aberto e mais curto (menos pontudo) e tampo um pouco mais largo, mesma altura
+  menor:    { mesa: 128, mesaY: 227, cinta: 205, cintaY: 327, espaco: 22, palavra: 1, faixa: [312, 668],
+              bico: { meia: 105, altura: 170 } },
   // diamante original e palavra 35% maior
   palavra:  { mesa: 295, mesaY: 178, cinta: 533, cintaY: 440, bicoY: 1100, espaco: 40, palavra: 1.35 },
 }
@@ -70,10 +72,20 @@ const NOME = new URLSearchParams(location.search).get('variante') || 'original'
 const V = VARIANTES[NOME] || VARIANTES.original
 const SAIDA = NOME === 'original' ? 'pausa-logo-diamante.mp4' : `pausa-logo-diamante-${NOME}.mp4`
 const CX = 392, PALAVRA_CY = 463
-const DIAMANTE = [[CX - V.mesa, V.mesaY], [CX + V.mesa, V.mesaY], [CX + V.cinta, V.cintaY], [CX, V.bicoY], [CX - V.cinta, V.cintaY]]
 // Onde a palavra corta o diamante: do topo das letras - 35 à base + 35, crescendo com a palavra.
 const FAIXA = V.faixa ?? [PALAVRA_CY - (PALAVRA_CY - 312) * V.palavra, PALAVRA_CY + (615 - PALAVRA_CY) * V.palavra]
-const ESCALA = 0.95, CENTRO = [CX, (V.mesaY + V.bicoY) / 2]   // centro do conjunto: do tampo ao bico
+// Diamante em sentido horário a partir do canto esquerdo do tampo; iBico diz onde está o bico.
+// Com V.bico, o bico é desenhado pela parte que aparece abaixo da faixa (meia largura ali e
+// altura): a emenda com o tampo fica atrás da palavra, e as pontas do tampo não mudam.
+function montarDiamante() {
+  const tl = [CX - V.mesa, V.mesaY], tr = [CX + V.mesa, V.mesaY], gr = [CX + V.cinta, V.cintaY], gl = [CX - V.cinta, V.cintaY]
+  if (!V.bico) return { pts: [tl, tr, gr, [CX, V.bicoY], gl], iBico: 3, bicoY: V.bicoY }
+  const baixo = FAIXA[1], meiaCinta = V.bico.meia + (V.bico.meia / V.bico.altura) * (baixo - V.cintaY)
+  const bico = [CX, baixo + V.bico.altura]
+  return { pts: [tl, tr, gr, [CX + meiaCinta, V.cintaY], bico, [CX - meiaCinta, V.cintaY], gl], iBico: 4, bicoY: bico[1] }
+}
+const { pts: DIAMANTE, iBico: I_BICO, bicoY: BICO_Y } = montarDiamante()
+const ESCALA = 0.95, CENTRO = [CX, (V.mesaY + BICO_Y) / 2]   // centro do conjunto: do tampo ao bico
 
 const $ = id => document.getElementById(id)
 const limite = x => Math.min(1, Math.max(0, x))
@@ -105,9 +117,9 @@ function recuar(pts, d) {
 }
 // Cada diamante em duas metades que saem do meio do tampo e se encontram no bico.
 const metades = pts => {
-  const [tl, tr, gr, bico, gl] = pts, topo = [(tl[0] + tr[0]) / 2, tl[1]]
+  const topo = [(pts[0][0] + pts[1][0]) / 2, pts[0][1]]
   const d = arr => 'M' + arr.map(p => p.map(v => v.toFixed(1)).join(' ')).join(' L')
-  return [d([topo, tr, gr, bico]), d([topo, tl, gl, bico])]
+  return [d([topo, ...pts.slice(1, I_BICO + 1)]), d([topo, pts[0], ...pts.slice(I_BICO + 1).reverse(), pts[I_BICO]])]
 }
 const linhasDiamante = [...metades(DIAMANTE), ...metades(recuar(DIAMANTE, V.espaco))].map(d => {
   const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); $('diamante').appendChild(p); return p
