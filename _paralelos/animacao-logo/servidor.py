@@ -50,6 +50,15 @@ class Pedido(SimpleHTTPRequestHandler):
             tamanho = int(self.headers.get('Content-Length', 0))
             (QUADROS / f'{n}.png').write_bytes(self.rfile.read(tamanho))
             return self.responder(200, {'ok': True})
+        if url.path.startswith('/imagem/'):
+            nome = url.path.rsplit('/', 1)[-1]
+            if not re.fullmatch(r'[a-z0-9-]+\.png', nome):
+                return self.responder(400, {'ok': False, 'erro': 'nome de imagem invalido'})
+            pasta = AQUI / 'propostas'
+            pasta.mkdir(exist_ok=True)
+            tamanho = int(self.headers.get('Content-Length', 0))
+            (pasta / nome).write_bytes(self.rfile.read(tamanho))
+            return self.responder(200, {'ok': True, 'arquivo': f'propostas/{nome}'})
         if url.path == '/fim':
             q = parse_qs(url.query)
             fps = q.get('fps', ['30'])[0]

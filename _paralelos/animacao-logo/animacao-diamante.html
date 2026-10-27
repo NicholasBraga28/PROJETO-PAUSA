@@ -71,6 +71,9 @@ const VARIANTES = {
   // o ícone que o dono mandou como base (contorno e facetas, traço único), com a cinta no topo
   // das letras: o tampo aparece inteiro e o bico reaparece embaixo da palavra
   icone:    { icone: { escala: 7.82, cintaY: 312 }, traco: 14, palavra: 1, faixa: [312, 668] },
+  // proposta B (escolhida): diamante da Semantix em contorno com as facetas, com eixo no meio do
+  // sorriso; cada linha é cortada na faixa da palavra e termina com ponta redonda
+  b:        { semantix: { cx: 380.5, G: 340, yc: 347, tampo: 167, bico: 452 }, corte: [317, 682], traco: 16, palavra: 1 },
 }
 // O ícone de referência (200x200), em coordenadas dele: contorno e facetas medidos nos pixels.
 const ICONE = {
@@ -91,8 +94,14 @@ const FAIXA = V.faixa ?? [PALAVRA_CY - (PALAVRA_CY - 312) * V.palavra, PALAVRA_C
 // Com V.bico, o bico é desenhado pela parte que aparece abaixo da faixa (meia largura ali e
 // altura): a emenda com o tampo fica atrás da palavra, e as pontas do tampo não mudam.
 const doIcone = ([x, y]) => [CX + (x - 100) * V.icone.escala, V.icone.cintaY + (y - 78) * V.icone.escala]
+// Proposta B: meia cinta G, cinta na altura yc, e tampo e bico com alturas próprias.
+const doSemantix = ([x, y]) => {
+  const s = V.semantix
+  return [s.cx + (x - 100) * s.G / 49, y < 78 ? s.yc - (78 - y) * s.tampo / 24 : s.yc + (y - 78) * s.bico / 65]
+}
 function montarDiamante() {
   if (V.icone) { const pts = ICONE.contorno.map(doIcone); return { pts, iBico: 3, bicoY: pts[3][1] } }
+  if (V.semantix) { const pts = ICONE.contorno.map(doSemantix); return { pts, iBico: 3, bicoY: pts[3][1] } }
   const tl = [CX - V.mesa, V.mesaY], tr = [CX + V.mesa, V.mesaY], gr = [CX + V.cinta, V.cintaY], gl = [CX - V.cinta, V.cintaY]
   if (!V.bico) return { pts: [tl, tr, gr, [CX, V.bicoY], gl], iBico: 3, bicoY: V.bicoY }
   const baixo = FAIXA[1], meiaCinta = V.bico.meia + (V.bico.meia / V.bico.altura) * (baixo - V.cintaY)
@@ -100,7 +109,9 @@ function montarDiamante() {
   return { pts: [tl, tr, gr, [CX + meiaCinta, V.cintaY], bico, [CX - meiaCinta, V.cintaY], gl], iBico: 4, bicoY: bico[1] }
 }
 const { pts: DIAMANTE, iBico: I_BICO, bicoY: BICO_Y } = montarDiamante()
-const ESCALA = 0.95, CENTRO = [CX, (DIAMANTE[0][1] + BICO_Y) / 2]   // centro do conjunto: do tampo ao bico
+// Centro do conjunto: do tampo ao bico; na largura, o meio entre a palavra e o diamante.
+const ESCALA = 0.95
+const CENTRO = [(Math.min(72, ...DIAMANTE.map(p => p[0])) + Math.max(712, ...DIAMANTE.map(p => p[0]))) / 2, (DIAMANTE[0][1] + BICO_Y) / 2]
 
 const $ = id => document.getElementById(id)
 const limite = x => Math.min(1, Math.max(0, x))
@@ -137,11 +148,31 @@ const metades = pts => {
   return [d([topo, ...pts.slice(1, I_BICO + 1)]), d([topo, pts[0], ...pts.slice(I_BICO + 1).reverse(), pts[I_BICO]])]
 }
 const novaLinha = d => { const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); $('diamante').appendChild(p); return p }
-// Linha dupla (as outras variantes) ou o ícone: contorno simples e facetas.
-const linhasDiamante = (V.icone ? metades(DIAMANTE) : [...metades(DIAMANTE), ...metades(recuar(DIAMANTE, V.espaco))]).map(novaLinha)
+const caminho = pts => 'M' + pts.map(p => p.map(v => v.toFixed(1)).join(' ')).join(' L')
+const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+const lados = pts => pts.map((p, i) => [p, pts[(i + 1) % pts.length]])
+// Partes de um segmento fora da faixa horizontal [y0, y1], onde a palavra passa.
+function cortar([a, b], y0, y1) {
+  if (a[1] === b[1]) return a[1] < y0 || a[1] > y1 ? [[a, b]] : []
+  const t0 = (y0 - a[1]) / (b[1] - a[1]), t1 = (y1 - a[1]) / (b[1] - a[1])
+  const lo = Math.min(t0, t1), hi = Math.max(t0, t1), partes = []
+  const parte = (ta, tb) => { if (tb - ta > 1e-3) partes.push([lerp(a, b, ta), lerp(a, b, tb)]) }
+  parte(0, Math.min(1, Math.max(0, lo))); parte(Math.max(0, Math.min(1, hi)), 1)
+  return partes
+}
+// Proposta B: contorno e facetas cortados um a um (pontas redondas no corte); sobra curta demais
+// vira só um ponto e sai.
+const segmentosB = V.semantix
+  ? [...lados(DIAMANTE), ...ICONE.facetas.map(([a, b]) => [doSemantix(a), doSemantix(b)])]
+      .flatMap(s => cortar(s, ...V.corte)).filter(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]) > 12)
+  : []
+// Linha dupla (as primeiras variantes), o ícone (contorno simples e facetas) ou a proposta B.
+const linhasDiamante = V.semantix ? segmentosB.map(caminho).map(novaLinha)
+  : (V.icone ? metades(DIAMANTE) : [...metades(DIAMANTE), ...metades(recuar(DIAMANTE, V.espaco))]).map(novaLinha)
 const facetas = V.icone ? ICONE.facetas.map(([a, b]) => novaLinha(`M${doIcone(a).join(' ')} L${doIcone(b).join(' ')}`)) : []
 if (V.traco) $('diamante').setAttribute('stroke-width', V.traco)
-if (V.icone) { $('diamante').setAttribute('stroke-linecap', 'round'); $('diamante').setAttribute('stroke-linejoin', 'round') }
+if (V.icone || V.semantix) { $('diamante').setAttribute('stroke-linecap', 'round'); $('diamante').setAttribute('stroke-linejoin', 'round') }
+if (V.semantix) $('diamante').removeAttribute('mask')
 $('faixa').setAttribute('y', FAIXA[0]); $('faixa').setAttribute('height', FAIXA[1] - FAIXA[0])
 
 const LETRAS = [['P', 0.30], ['A1', 0.55], ['S', 1.60], ['A2', 1.85]]
@@ -171,7 +202,8 @@ function desenhar(t) {
   tracar($('sorriso'), saida(fase(t, 1.35, 0.5)))
   // O diamante se desenha quando a palavra termina: a linha de fora e, logo atrás, a de dentro,
   // as duas metades saindo do meio do tampo e se encontrando no bico.
-  linhasDiamante.forEach((el, i) => tracar(el, suave(fase(t, i < 2 ? 2.15 : 2.35, V.icone ? 0.8 : 1.0))))
+  if (V.semantix) linhasDiamante.forEach((el, i) => tracar(el, suave(fase(t, 2.15 + i * 0.07, 0.5))))
+  else linhasDiamante.forEach((el, i) => tracar(el, suave(fase(t, i < 2 ? 2.15 : 2.35, V.icone ? 0.8 : 1.0))))
   // No ícone, as facetas se desenham logo depois do contorno, uma atrás da outra.
   facetas.forEach((el, i) => tracar(el, suave(fase(t, 2.6 + i * 0.05, 0.45))))
   // No fim só o sorriso dá o zoom: cresce em torno do próprio centro e volta.
