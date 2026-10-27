@@ -1,13 +1,14 @@
 """Serve a animacao.html e transforma os quadros que ela envia num MP4.
 
     python servidor.py            depois abra http://127.0.0.1:8790/animacao.html
-                                  e clique em "exportar MP4"
+                                  (ou animacao-diamante.html) e clique em "exportar MP4"
 
 Precisa do ffmpeg: o do pacote imageio-ffmpeg (pip install --user imageio-ffmpeg) ou um
 ffmpeg no PATH. O vídeo sai em pausa-logo.mp4, nesta pasta: H.264, yuv420p, que abre em
 qualquer player, editor, PowerPoint e celular.
 """
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -50,19 +51,24 @@ class Pedido(SimpleHTTPRequestHandler):
             (QUADROS / f'{n}.png').write_bytes(self.rfile.read(tamanho))
             return self.responder(200, {'ok': True})
         if url.path == '/fim':
-            fps = parse_qs(url.query).get('fps', ['30'])[0]
+            q = parse_qs(url.query)
+            fps = q.get('fps', ['30'])[0]
+            nome = q.get('nome', [SAIDA.name])[0]
+            if not re.fullmatch(r'[a-z0-9-]+\.mp4', nome) or not fps.isdigit():
+                return self.responder(400, {'ok': False, 'erro': 'nome ou fps invalido'})
+            saida = AQUI / nome
             exe = ffmpeg()
             if not exe:
                 return self.responder(500, {'ok': False, 'erro': 'ffmpeg nao encontrado (pip install --user imageio-ffmpeg)'})
             r = subprocess.run([exe, '-y', '-loglevel', 'error', '-framerate', fps, '-i', str(QUADROS / '%04d.png'),
                                 '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '16', '-preset', 'slow',
-                                '-movflags', '+faststart', str(SAIDA)], capture_output=True, text=True)
+                                '-movflags', '+faststart', str(saida)], capture_output=True, text=True)
             quadros = sorted(QUADROS.glob('*.png'))
             for q in quadros:
                 q.unlink()
             if r.returncode:
                 return self.responder(500, {'ok': False, 'erro': r.stderr[-500:]})
-            return self.responder(200, {'ok': True, 'arquivo': SAIDA.name, 'quadros': len(quadros), 'bytes': SAIDA.stat().st_size})
+            return self.responder(200, {'ok': True, 'arquivo': saida.name, 'quadros': len(quadros), 'bytes': saida.stat().st_size})
         self.responder(404, {'ok': False, 'erro': 'rota desconhecida'})
 
     def log_message(self, *args):
