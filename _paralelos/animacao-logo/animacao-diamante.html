@@ -60,8 +60,9 @@ const NS = 'http://www.w3.org/2000/svg'
 const VARIANTES = {
   // proporções da imagem de referência; a palavra esconde a cinta
   original: { mesa: 295, mesaY: 178, cinta: 533, cintaY: 440, bicoY: 1100, espaco: 40, palavra: 1 },
-  // diamante do tamanho da palavra: a cinta logo acima das letras, o tampo inteiro à vista
-  menor:    { mesa: 210, mesaY: 140, cinta: 380, cintaY: 327, bicoY: 870, espaco: 30, palavra: 1 },
+  // diamante mais estreito que a palavra (escolhido pelo dono): as pontas do tampo caem nos vãos
+  // P|A e S|A, e a faixa desce até abaixo do sorriso para o bico reaparecer só depois dele
+  menor:    { mesa: 113, mesaY: 227, cinta: 205, cintaY: 327, bicoY: 900, espaco: 22, palavra: 1, faixa: [312, 668] },
   // diamante original e palavra 35% maior
   palavra:  { mesa: 295, mesaY: 178, cinta: 533, cintaY: 440, bicoY: 1100, espaco: 40, palavra: 1.35 },
 }
@@ -71,7 +72,7 @@ const SAIDA = NOME === 'original' ? 'pausa-logo-diamante.mp4' : `pausa-logo-diam
 const CX = 392, PALAVRA_CY = 463
 const DIAMANTE = [[CX - V.mesa, V.mesaY], [CX + V.mesa, V.mesaY], [CX + V.cinta, V.cintaY], [CX, V.bicoY], [CX - V.cinta, V.cintaY]]
 // Onde a palavra corta o diamante: do topo das letras - 35 à base + 35, crescendo com a palavra.
-const FAIXA = [PALAVRA_CY - (PALAVRA_CY - 312) * V.palavra, PALAVRA_CY + (615 - PALAVRA_CY) * V.palavra]
+const FAIXA = V.faixa ?? [PALAVRA_CY - (PALAVRA_CY - 312) * V.palavra, PALAVRA_CY + (615 - PALAVRA_CY) * V.palavra]
 const ESCALA = 0.95, CENTRO = [CX, (V.mesaY + V.bicoY) / 2]   // centro do conjunto: do tampo ao bico
 
 const $ = id => document.getElementById(id)

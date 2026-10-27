@@ -11,7 +11,7 @@ Rodar: backend em `backend/` (`docker compose up -d`, `npm run prisma:deploy`, `
 ## _paralelos
 - `_paralelos/animacao-logo/` — animação da logo PAUSA para o serviço, feita em 2026-10-27. Tem:
   - `pausa-logo.mp4`: o vídeo, 1920×1080, 4,5 s (versão 3, aprovada);
-  - `pausa-logo-diamante.mp4` e `animacao-diamante.html`: a mesma animação com a logo de diamante. A palavra corta o diamante na cinta, e dele aparecem só o tampo e o bico. Tem 5 s. Há duas variantes de tamanho, em `pausa-logo-diamante-menor.mp4` (diamante do tamanho da palavra) e `pausa-logo-diamante-palavra.mp4` (palavra 35% maior). Elas saem de `animacao-diamante.html?variante=menor` e `?variante=palavra`;
+  - `pausa-logo-diamante.mp4` e `animacao-diamante.html`: a mesma animação com a logo de diamante. A palavra corta o diamante na cinta, e dele aparecem só o tampo e o bico. Tem 5 s. Há duas variantes de tamanho, em `pausa-logo-diamante-menor.mp4` (a escolhida pelo dono: diamante mais estreito que a palavra, com as pontas do tampo nos vãos P|A e S|A e o bico logo abaixo do sorriso) e `pausa-logo-diamante-palavra.mp4` (palavra 35% maior). Elas saem de `animacao-diamante.html?variante=menor` e `?variante=palavra`;
   - `logo-pausa.svg`: a logo em vetor, redesenhada da imagem original;
   - `animacao.html`: a animação, com prévia;
   - `servidor.py`: refaz o MP4 a partir da página. Rode `python servidor.py`, abra http://127.0.0.1:8790/animacao.html e clique em "exportar MP4". Precisa do `imageio-ffmpeg` (`pip install --user imageio-ffmpeg`).
