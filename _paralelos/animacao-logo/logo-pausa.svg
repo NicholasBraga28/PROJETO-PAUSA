@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="64 327 649 348" width="649" height="348">
+  <!-- Logo PAUSA redesenhada em vetor a partir da imagem original (765x1024), nas mesmas
+       coordenadas: letras em traço único de 18 px com pontas redondas, cinza #494948;
+       o "U" são duas barras de 34 px e um sorriso de 18 px, roxo #7D3AA4. -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#494948" stroke-width="18">
+      <path id="P"  d="M92 571 V357 H127 A47 55 0 0 1 127 467 H92"/>
+      <path id="A1" d="M184 571 L234 357 L291 571 M202 495 H271"/>
+      <path id="S"  d="M542 373 C530 353 490 351 476 371 C463 391 469 427 500 449 C531 471 553 495 549 532 C546 574 498 586 469 563"/>
+      <path id="A2" d="M578 571 L627.5 357 L684.5 571 M596 495 H664"/>
+    </g>
+    <g stroke="#7D3AA4">
+      <path id="barra1" d="M344.5 365 V553" stroke-width="34"/>
+      <path id="barra2" d="M416.5 365 V553" stroke-width="34"/>
+      <path id="sorriso" d="M326 606 A57 57 0 0 0 435 606" stroke-width="18"/>
+    </g>
+  </g>
+</svg>

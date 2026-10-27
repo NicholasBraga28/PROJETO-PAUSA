@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Animação da logo PAUSA</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1b1b1f; color: #ddd; font: 14px system-ui, sans-serif; }
+  #palco { display: block; width: 100%; height: calc(100% - 44px); }
+  #barra { height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; }
+  button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid #555; background: #2a2a30; color: #eee; cursor: pointer; }
+  input[type=range] { flex: 1; }
+</style>
+</head>
+<body>
+<!-- A animação inteira é uma função do tempo, desenhar(t): o mesmo quadro sai igual na
+     prévia e na exportação. As formas são as da logo-pausa.svg (mesmas coordenadas). -->
+<svg id="palco" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="halo">
+      <stop offset="0" stop-color="#A06BC4" stop-opacity="0.12"/>
+      <stop offset="0.6" stop-color="#A06BC4" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#A06BC4" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="#F9F9F1"/>
+  <ellipse id="brilho" cx="960" cy="540" rx="0" ry="0" fill="url(#halo)"/>
+  <g id="logo" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path id="P"  stroke-width="18" d="M92 571 V357 H127 A47 55 0 0 1 127 467 H92"/>
+    <path id="A1" stroke-width="18" d="M184 571 L234 357 L291 571 M202 495 H271"/>
+    <path id="barra1" stroke="#7D3AA4" stroke-width="34" d=""/>
+    <path id="barra2" stroke="#7D3AA4" stroke-width="34" d=""/>
+    <g id="sorrisoG"><path id="sorriso" stroke="#7D3AA4" stroke-width="18" d="M326 606 A57 57 0 0 0 435 606"/></g>
+    <path id="S"  stroke-width="18" d="M542 373 C530 353 490 351 476 371 C463 391 469 427 500 449 C531 471 553 495 549 532 C546 574 498 586 469 563"/>
+    <path id="A2" stroke-width="18" d="M578 571 L627.5 357 L684.5 571 M596 495 H664"/>
+  </g>
+</svg>
+<div id="barra">
+  <button id="tocar">pausar</button>
+  <input id="tempo" type="range" min="0" max="4.5" step="0.001" value="0">
+  <span id="rotulo">0,00 s</span>
+  <button id="exportar">exportar MP4</button>
+  <span id="estado"></span>
+</div>
+<script>
+const DURACAO = 4.5, FPS = 30
+const CINZA = '#494948', ROXO = '#7D3AA4'
+const ESCALA = 1.6, CENTRO = [388.5, 501]   // centro da logo nas coordenadas da imagem original
+
+const $ = id => document.getElementById(id)
+const limite = x => Math.min(1, Math.max(0, x))
+const fase = (t, ini, dur) => limite((t - ini) / dur)
+const suave = p => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
+const saida = p => 1 - Math.pow(1 - p, 3)
+const saidaVolta = p => { const c = 1.6; return 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2) }
+const mistura = (a, b, p) => {
+  const n = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))
+  const [x, y] = [n(a), n(b)]
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * p).toString(16).padStart(2, '0')).join('')
+}
+
+// Cada letra entra traçada em roxo (a cor de destaque, como a letra nova da referência)
+// e assenta no cinza logo depois. Entram da esquerda para a direita.
+const LETRAS = [['P', 0.30], ['A1', 0.55], ['S', 1.60], ['A2', 1.85]]
+const comprimento = {}
+for (const [id] of LETRAS) comprimento[id] = $(id).getTotalLength()
+
+function desenhar(t) {
+  for (const [id, ini] of LETRAS) {
+    const p = suave(fase(t, ini, 0.55)), cor = fase(t, ini + 0.45, 0.4), L = comprimento[id], el = $(id)
+    el.setAttribute('stroke-dasharray', `${L} ${L}`)
+    el.setAttribute('stroke-dashoffset', L * (1 - p))
+    el.setAttribute('stroke', mistura(ROXO, CINZA, cor))
+    el.setAttribute('opacity', p > 0 ? 1 : 0)
+  }
+  // O "U": as duas barras sobem do chão, como um botão de pausa, com um pequeno passe do ponto.
+  for (const [id, x, ini] of [['barra1', 344.5, 0.95], ['barra2', 416.5, 1.05]]) {
+    const p = fase(t, ini, 0.5), h = (553 - 365) * saidaVolta(p)
+    $(id).setAttribute('d', p > 0 ? `M${x} 553 V${553 - h}` : '')
+  }
+  // O sorriso se desenha da esquerda para a direita...
+  const s = $('sorriso'), Ls = s.getTotalLength(), ps = saida(fase(t, 1.35, 0.5))
+  s.setAttribute('stroke-dasharray', `${Ls} ${Ls}`)
+  s.setAttribute('stroke-dashoffset', Ls * (1 - ps))
+  s.setAttribute('opacity', ps > 0 ? 1 : 0)
+  // ...e no fim dá uma piscada: estica um pouco para baixo e volta.
+  const pisca = fase(t, 2.55, 0.5), k = 1 + 0.12 * Math.sin(Math.PI * pisca)
+  $('sorrisoG').setAttribute('transform', `translate(380.5 606) scale(1 ${k}) translate(-380.5 -606)`)
+  // Brilho roxo suave atrás da logo, depois que ela se completa.
+  const pb = saida(fase(t, 2.3, 0.9))
+  $('brilho').setAttribute('rx', 700 * pb)
+  $('brilho').setAttribute('ry', 380 * pb)
+  $('brilho').setAttribute('opacity', 0.35 + 0.65 * pb)
+  // A logo respira de leve no fim.
+  const resp = 1 + 0.02 * Math.sin(Math.PI * fase(t, 2.3, 1.0))
+  $('logo').setAttribute('transform', `translate(960 540) scale(${ESCALA * resp}) translate(${-CENTRO[0]} ${-CENTRO[1]})`)
+}
+
+// Prévia: toca em laço; o controle deslizante mostra qualquer instante.
+let tocando = true, t0 = performance.now()
+function laco(agora) {
+  if (tocando) {
+    const t = ((agora - t0) / 1000) % (DURACAO + 1)
+    const tt = Math.min(t, DURACAO)
+    desenhar(tt); $('tempo').value = tt; $('rotulo').textContent = tt.toFixed(2).replace('.', ',') + ' s'
+  }
+  requestAnimationFrame(laco)
+}
+requestAnimationFrame(laco)
+$('tocar').onclick = () => { tocando = !tocando; $('tocar').textContent = tocando ? 'pausar' : 'tocar'; t0 = performance.now() - $('tempo').value * 1000 }
+$('tempo').oninput = e => { tocando = false; $('tocar').textContent = 'tocar'; desenhar(+e.target.value); $('rotulo').textContent = (+e.target.value).toFixed(2).replace('.', ',') + ' s' }
+
+// Exportação: cada quadro vira PNG 1920x1080 e vai para o servidor.py, que monta o MP4.
+async function quadroPng(t) {
+  desenhar(t)
+  const svg = new XMLSerializer().serializeToString($('palco')).replace('<svg ', '<svg width="1920" height="1080" ')
+  const img = new Image()
+  img.src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+  await img.decode()
+  const c = document.createElement('canvas'); c.width = 1920; c.height = 1080
+  c.getContext('2d').drawImage(img, 0, 0, 1920, 1080)
+  URL.revokeObjectURL(img.src)
+  return new Promise(r => c.toBlob(r, 'image/png'))
+}
+window.exportar = async () => {
+  tocando = false
+  const total = Math.round(DURACAO * FPS) + 1
+  for (let i = 0; i < total; i++) {
+    const png = await quadroPng(i / FPS)
+    const r = await fetch(`/quadro/${String(i).padStart(4, '0')}`, { method: 'POST', body: png })
+    if (!r.ok) throw new Error('servidor recusou o quadro ' + i)
+    $('estado').textContent = `quadro ${i + 1} de ${total}`
+  }
+  const fim = await fetch(`/fim?fps=${FPS}`, { method: 'POST' }).then(r => r.json())
+  $('estado').textContent = fim.ok ? `pronto: ${fim.arquivo}` : 'falhou: ' + fim.erro
+  return fim
+}
+$('exportar').onclick = () => window.exportar().catch(e => { $('estado').textContent = 'falhou: ' + e.message })
+</script>
+</body>
+</html>
