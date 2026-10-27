@@ -84,17 +84,16 @@ function desenhar(t) {
   s.setAttribute('stroke-dasharray', `${Ls} ${Ls}`)
   s.setAttribute('stroke-dashoffset', Ls * (1 - ps))
   s.setAttribute('opacity', ps > 0 ? 1 : 0)
-  // ...e no fim dá uma piscada: estica um pouco para baixo e volta.
-  const pisca = fase(t, 2.55, 0.5), k = 1 + 0.12 * Math.sin(Math.PI * pisca)
-  $('sorrisoG').setAttribute('transform', `translate(380.5 606) scale(1 ${k}) translate(-380.5 -606)`)
+  // ...e no fim só ele dá um zoom: cresce em torno do próprio centro e volta (pedido do dono).
+  const zoom = fase(t, 2.45, 0.8), k = 1 + 0.2 * Math.sin(Math.PI * suave(zoom))
+  $('sorrisoG').setAttribute('transform', `translate(380.5 626) scale(${k}) translate(-380.5 -626)`)
   // Brilho roxo suave atrás da logo, depois que ela se completa.
   const pb = saida(fase(t, 2.3, 0.9))
   $('brilho').setAttribute('rx', 700 * pb)
   $('brilho').setAttribute('ry', 380 * pb)
   $('brilho').setAttribute('opacity', 0.35 + 0.65 * pb)
-  // A logo respira de leve no fim.
-  const resp = 1 + 0.02 * Math.sin(Math.PI * fase(t, 2.3, 1.0))
-  $('logo').setAttribute('transform', `translate(960 540) scale(${ESCALA * resp}) translate(${-CENTRO[0]} ${-CENTRO[1]})`)
+  // A palavra fica parada; o zoom do fim é só do sorriso.
+  $('logo').setAttribute('transform', `translate(960 540) scale(${ESCALA}) translate(${-CENTRO[0]} ${-CENTRO[1]})`)
 }
 
 // Prévia: toca em laço; o controle deslizante mostra qualquer instante.
