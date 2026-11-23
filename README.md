@@ -4,6 +4,8 @@
 
 **Agenda de massoterapia corporativa, acessível de ponta a ponta**
 
+🏆 **Projeto campeão do Desafio de Inovação do Programa de Estágio Semantix 2026**
+
 Reserva de sessões, lista de espera, check-in por QR Code, chatbot, painel de gestão e integração com a Alexa,
 pensados para que massoterapeutas com deficiência visual trabalhem com autonomia.
 
@@ -39,7 +41,8 @@ pensados para que massoterapeutas com deficiência visual trabalhem com autonomi
 
 ## Sobre o projeto
 
-O Pausa nasceu no **Desafio de Inovação do Programa de Estágio Semantix 2026**, a partir da pergunta:
+O Pausa nasceu no **Desafio de Inovação do Programa de Estágio Semantix 2026**, do qual foi o **projeto campeão**.
+O desafio partiu da pergunta:
 
 > Como a tecnologia pode promover inclusão profissional e autonomia para massoterapeutas com deficiência visual,
 > eliminando o atrito operacional e elevando o bem-estar corporativo?
@@ -289,6 +292,6 @@ Na tela de entrada, os perfis de demonstração permitem entrar como colaborador
 
 <div align="center">
 
-Desenvolvido no Desafio de Inovação do Programa de Estágio Semantix 2026.
+🏆 Campeão do Desafio de Inovação do Programa de Estágio Semantix 2026.
 
 </div>
