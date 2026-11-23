@@ -1,4 +1,4 @@
-import { IsDateString, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsDateString, IsOptional, IsUUID } from "class-validator";
 
 export class PeriodDto {
   @IsDateString() startsAt!: string;
@@ -16,9 +16,4 @@ export class AvailabilityDto extends PeriodDto {
 
 export class JoinWaitlistDto extends PeriodDto {
   @IsOptional() @IsUUID() therapistId?: string;
-}
-
-export class BlockDto extends PeriodDto {
-  @IsUUID() therapistId!: string;
-  @IsOptional() @IsString() reason?: string;
 }

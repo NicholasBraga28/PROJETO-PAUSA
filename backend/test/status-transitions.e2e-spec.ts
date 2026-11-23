@@ -55,17 +55,6 @@ describe("Status transitions on legacy routes (e2e)", () => {
     return { employee, therapistUser, appointment };
   };
 
-  it("RF-14: the therapist starts a POSSIBLE_NO_SHOW appointment", async () => {
-    const { therapistUser, appointment } = await createAppointment("POSSIBLE_NO_SHOW");
-
-    const response = await request(app.getHttpServer())
-      .post(`/api/therapist/appointments/${appointment.id}/start`)
-      .set("x-user-id", therapistUser.id)
-      .expect(201);
-
-    expect(response.body).toEqual(expect.objectContaining({ id: appointment.id, status: "IN_PROGRESS" }));
-  });
-
   it("RF-03: the employee cannot cancel a CHECKED_IN appointment and hears the catalog message", async () => {
     const { employee, appointment } = await createAppointment("CHECKED_IN");
 

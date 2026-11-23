@@ -1,6 +1,6 @@
 import { INestApplication } from "@nestjs/common";
 import * as request from "supertest";
-import { AppointmentEvents } from "../src/booking/appointment-events";
+import { AppointmentCancelledEvent, AppointmentEvents } from "../src/booking/appointment-events";
 import { FakeClock } from "../src/common/clock/fake-clock";
 import { PrismaService } from "../src/prisma/prisma.service";
 import { createTestApp } from "./support/create-test-app";
@@ -14,7 +14,7 @@ const FUTURE_END = new Date("2026-10-21T14:20:00Z");
 describe("Appointment cancellation (e2e)", () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let cancellationEvent: { appointmentId: string; employeeId: string } | undefined;
+  let cancellationEvent: AppointmentCancelledEvent | undefined;
 
   beforeAll(async () => {
     ({ app, prisma } = await createTestApp({ clock: new FakeClock(NOW) }));
@@ -85,7 +85,12 @@ describe("Appointment cancellation (e2e)", () => {
         spokenText: expect.stringMatching(/^Agendamento cancelado/),
       }),
     );
-    expect(cancellationEvent).toEqual({ appointmentId: appointment.id, employeeId: employee.id });
+    expect(cancellationEvent).toEqual({
+      appointmentId: appointment.id,
+      employeeId: employee.id,
+      cancelledById: employee.id,
+      cancelledByRole: "EMPLOYEE",
+    });
     expect(
       await prisma.auditEvent.findFirst({ where: { entityId: appointment.id, action: "APPOINTMENT_CANCELLED" } }),
     ).not.toBeNull();

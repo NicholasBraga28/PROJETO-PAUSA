@@ -80,6 +80,41 @@ describe("Available slots (e2e)", () => {
     await app.close();
   });
 
+  it.each([undefined, 20])(
+    "TK-04.10 RF-01 RN-05: exposes the current session duration with durationMinutes=%s",
+    async (durationMinutes) => {
+      const response = await request(app.getHttpServer())
+        .get("/api/booking/availability")
+        .query({
+          from: WEDNESDAY_START.toISOString(),
+          to: WEDNESDAY_END.toISOString(),
+          ...(durationMinutes === undefined ? {} : { durationMinutes }),
+        })
+        .set("x-user-id", employeeId)
+        .expect(200);
+
+      expect(response.body.sessionDurationMinutes).toBe(20);
+      expect(response.body.slots.length).toBeGreaterThan(0);
+      expect(response.body.slots).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            endsAt: expect.any(String),
+            startsAt: expect.any(String),
+          }),
+        ]),
+      );
+      expect(response.body.slots).toEqual(
+        [...response.body.slots].sort(
+          (first: { startsAt: string }, second: { startsAt: string }) =>
+            Date.parse(first.startsAt) - Date.parse(second.startsAt),
+        ),
+      );
+      for (const slot of response.body.slots as { startsAt: string; endsAt: string }[]) {
+        expect(Date.parse(slot.endsAt) - Date.parse(slot.startsAt)).toBe(20 * 60_000);
+      }
+    },
+  );
+
   it("RF-01 RN-05 RN-07 RN-08 RN-12: returns free slots in chronological order with filters and spokenText", async () => {
     const response = await request(app.getHttpServer())
       .get("/api/booking/availability")
@@ -140,6 +175,40 @@ describe("Available slots (e2e)", () => {
     expect(new Set(response.body.slots.map((slot: { therapistId: string }) => slot.therapistId))).toEqual(
       new Set([secondTherapistId]),
     );
+  });
+
+  it("TK-04.06 RF-04: exposes occupied appointment periods for waitlist selection without employee details", async () => {
+    const otherEmployee = await prisma.user.create({
+      data: { email: "other-employee@example.com", name: "Private Employee", role: "EMPLOYEE" },
+    });
+    await prisma.appointment.create({
+      data: {
+        employeeId: otherEmployee.id,
+        therapistId,
+        roomId,
+        startsAt: new Date("2026-10-21T12:40:00.000Z"),
+        endsAt: new Date("2026-10-21T13:00:00.000Z"),
+        status: "CONFIRMED",
+      },
+    });
+
+    const response = await request(app.getHttpServer())
+      .get("/api/booking/availability")
+      .query({ from: WEDNESDAY_START.toISOString(), to: WEDNESDAY_END.toISOString(), durationMinutes: 20 })
+      .set("x-user-id", employeeId)
+      .expect(200);
+
+    expect(response.body.waitlistSlots).toEqual([
+      expect.objectContaining({
+        therapistId,
+        roomId,
+        startsAt: "2026-10-21T12:40:00.000Z",
+        endsAt: "2026-10-21T13:00:00.000Z",
+        location: expect.objectContaining({ id: SAO_PAULO_ID }),
+      }),
+    ]);
+    expect(JSON.stringify(response.body.waitlistSlots)).not.toContain(otherEmployee.id);
+    expect(JSON.stringify(response.body.waitlistSlots)).not.toContain(otherEmployee.name);
   });
 
   it("RF-01: protects availability with employee identification", async () => {

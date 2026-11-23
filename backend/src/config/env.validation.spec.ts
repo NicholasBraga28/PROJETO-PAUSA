@@ -20,6 +20,7 @@ const validEnvironment = {
   LUNCH_START: "12:00",
   LUNCH_END: "13:00",
   WORK_END: "18:00",
+  ALEXA_SKILL_ID: "amzn1.ask.skill.test",
 };
 
 describe("validateEnvironment", () => {
@@ -41,6 +42,18 @@ describe("validateEnvironment", () => {
 
   it("requires GOOGLE_CLIENT_ID when AUTH_MODE is google", () => {
     expect(() => validateEnvironment({ ...validEnvironment, AUTH_MODE: "google" })).toThrow(/GOOGLE_CLIENT_ID/);
+  });
+
+  it("RNF-03: requires ALEXA_SKILL_ID outside the test environment", () => {
+    expect(() => validateEnvironment({ ...validEnvironment, NODE_ENV: "production", ALEXA_SKILL_ID: "" })).toThrow(
+      /ALEXA_SKILL_ID/,
+    );
+  });
+
+  it("RNF-03: lets the test environment start without ALEXA_SKILL_ID", () => {
+    expect(() =>
+      validateEnvironment({ ...validEnvironment, NODE_ENV: "test", ALEXA_SKILL_ID: undefined }),
+    ).not.toThrow();
   });
 
   it("rejects an invalid business rule parameter at startup", () => {

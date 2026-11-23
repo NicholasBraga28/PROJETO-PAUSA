@@ -140,4 +140,11 @@ describe("Appointment check-in (e2e)", () => {
     expect(responses.filter((response) => response.status === 409)).toHaveLength(1);
     await expect(prisma.notification.count({ where: { kind: "CHECK_IN_CONFIRMATION" } })).resolves.toBe(1);
   });
+
+  it("TK-05.02 RF-06 RN-02 RN-09: rejects a repeated check-in with a conflict", async () => {
+    const { employee } = await createFixture();
+
+    await request(app.getHttpServer()).post("/api/booking/check-in/token-1").set("x-user-id", employee.id).expect(200);
+    await request(app.getHttpServer()).post("/api/booking/check-in/token-1").set("x-user-id", employee.id).expect(409);
+  });
 });

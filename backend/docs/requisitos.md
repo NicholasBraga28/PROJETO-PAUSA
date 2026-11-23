@@ -49,10 +49,38 @@ Este documento é a fonte única de requisitos do projeto e a entrada principal 
 | 2026-10-20 | **Bloqueio de horários com atendimentos concorrentes (D-04 / RF-23):** Bloqueios sobre horários com atendimentos confirmados são recusados com status 409 e listam os atendimentos conflitantes, exigindo cancelamento explícito prévio. |
 | 2026-10-20 | **Reagendamento (D-03 / RF-08):** Fora do MVP. Para trocar de horário, o colaborador cancela a sessão atual e faz uma nova reserva. |
 | 2026-10-20 | **Oferta da lista de espera (D-13 / RF-04):** O colaborador recebe uma notificação/card dentro do sistema. A oferta expira conforme `WAITLIST_ACCEPTANCE_MINUTES` e passa ao próximo da fila. |
+| 2026-11-03 | **Lista de espera (RF-04 / RN-10):** disponibilidade oferece `waitlistSlots` para periodos ocupados por agendamento, sem dados do colaborador. A entrada exige terapeuta e unidade; oferta pode ser recusada por rota propria e a fila avanca. Bloqueios administrativos nao geram oferta. |
 | 2026-10-20 | **Sessão em `CHECKED_IN` sem início (D-06):** se o massoterapeuta não iniciar a sessão, o sistema a marca como `COMPLETED` no horário de término, seguindo a RN-16. |
 | 2026-10-20 | **Mensagens de check-in:** a confirmação do check-in é destinada ao colaborador; o aviso de chegada é uma mensagem separada destinada ao massoterapeuta, com ações acessíveis para consultar a agenda ou fechar o aviso. |
 | 2026-10-22 | **Código de pareamento da Alexa (D-18 / RF-17):** 6 dígitos numéricos (o slot da Alexa reconhece dígitos), válido por 60 minutos, constante técnica (não é parâmetro do RH). Gerar um código novo expira os códigos ainda não usados do mesmo massoterapeuta: um código ativo por vez. |
 | 2026-10-22 | **Uma Alexa serve a vários massoterapeutas (RN-17):** a cardinalidade é n massoterapeutas : 1 Alexa. Refina a decisão de 2026-10-16 ("o aparelho fica ligado a ele"). Como a Alexa compartilhada sabe qual massoterapeuta está falando ainda está em aberto (D-19). |
+| 2026-10-22 | **Quem está falando com a Alexa (D-19 / RN-17):** cada aparelho guarda os massoterapeutas vinculados a ele; "vincular código" acrescenta um massoterapeuta e não substitui os outros. A Alexa deduz quem fala quando há um único vinculado ou quando só um dos vinculados tem período de agenda (`ScheduleSlot`) naquele momento; senão, pergunta o nome e o usa até o fim daquela conversa. Pede migração: `AlexaDevice` passa a ter vários massoterapeutas. |
+| 2026-10-22 | **Cancelamento pelo massoterapeuta (D-05 / RN-13):** a antecedência mínima de cancelamento (RN-01) não vale para o massoterapeuta. Ele cancela a qualquer momento, e o colaborador é avisado. |
+| 2026-10-22 | **Confirmação por voz (RN-13):** só cancelar e bloquear pedem confirmação, porque afetam o colaborador. Iniciar e finalizar sessão não pedem: são frequentes e a resposta já diz o resultado. Refina a regra "ações que alteram dados exigem confirmação". |
+| 2026-10-22 | **Lembrete falado (D-15 / RF-16):** pela documentação da Amazon, a Reminders API só cria lembretes durante uma conversa com a skill, não a partir do backend; fora da conversa é possível consultar e apagar. Por isso, a Alexa cria os lembretes das sessões restantes do dia quando o massoterapeuta conversa com ela (abrir a skill, agenda do dia), e o cancelamento apaga o lembrete fora da conversa. Sessão marcada depois da última conversa fica sem lembrete até a próxima. O spike TK-07.09 confirma no aparelho. |
+| 2026-10-22 | **Lembrete sem nome (D-16 / RF-16):** o lembrete falado não diz o nome do colaborador, porque outra pessoa pode estar na sala. |
+| 2026-10-23 | **Hospedagem (D-09):** frontend na Vercel; backend e PostgreSQL num serviço de contêiner sempre ligado, com o `Dockerfile` do backend (Render, Railway ou Fly.io, escolhido no TK-13.03). A Vercel não serve para o backend: os jobs de minuto em minuto não rodam em função serverless (o Cron do plano gratuito é diário) e o tempo de inicialização arrisca o limite de 8 s da Alexa. |
+| 2026-10-23 | **Nome de invocação da skill:** "pausa" ("Alexa, abrir pausa", "Alexa, pergunte à pausa quem é o próximo"). Riscos aceitos: na certificação, a Amazon só aceita nome de uma palavra se for marca própria (a certificação está fora do escopo), e "pausa" é também o comando nativo de pausar mídia. Se o teste no aparelho mostrar conflito, a alternativa é "pausa massagem". |
+| 2026-10-23 | **Uma Alexa por sala, com vários massoterapeutas atendendo ao mesmo tempo na mesma sala** (resposta da entrevista). Muda a RN-12: dois atendimentos ou dois períodos de agenda na mesma sala, no mesmo horário, passam a ser permitidos; continua proibido sobrepor o mesmo massoterapeuta (TK-03.09). Na Alexa, isso faz a pergunta "Quem está falando?" ser o caso comum (D-19). |
+| 2026-10-23 | **Schema da Alexa com vários massoterapeutas por aparelho (D-19):** combinado com a Mariana. `AlexaDevice` deixa de ter `therapist_id` e ganha a tabela de associação `alexa_device_therapists` (TK-07.05). |
+| 2026-10-23 | **Marcar ausência pede confirmação (RN-13 / RF-33):** além de cancelar e bloquear, marcar ausência também pede confirmação, porque conta contra o colaborador e não tem como desfazer. Refina a decisão de 2026-10-22. Iniciar e finalizar continuam sem confirmação (spec do EP-06). |
+| 2026-10-23 | **Cancelamento pelo massoterapeuta não vai para a lista de espera (RN-10 / RF-12, RF-32):** cancelar quer dizer "não vou atender", então a vaga não é oferecida à fila. O colaborador é avisado (MSG-07). Cancelamentos pelo colaborador e pelo RH continuam oferecendo a vaga (spec do EP-06). |
+| 2026-10-23 | **Janela para iniciar a sessão (RF-14):** o massoterapeuta só inicia um atendimento a partir da abertura do check-in (RN-09, `CHECK_IN_EARLY_MINUTES` antes do início) até o horário de término. Evita iniciar por voz a sessão errada (spec do EP-06). |
+| 2026-10-23 | **Regras do bloqueio de horário (RF-13, RF-23):** iguais para o RH e o massoterapeuta: recusa início no passado, período que atravessa dias e sobreposição a outro bloqueio; aceita período que cobre o almoço ou fica fora de um período de agenda; aplica a RN-08 e a D-04 (spec do EP-03, TK-03.06). |
+| 2026-10-26 | **Avisos para a tela do massoterapeuta (D-07 / RF-31):** consulta periódica no protótipo, sem SSE. A tela consulta `GET /notifications` com o filtro `since` (só o que é novo), recebe os avisos em ordem cronológica com `spokenText` pronto para `aria-live` e marca cada um como lido (`POST /notifications/:id/read`), para não lê-lo de novo. |
+| 2026-10-27 | **Acessibilidade é o requisito fulcral do frontend (D-23 / RN-04):** nenhuma tela é entregue sem acessibilidade visual impecável. A meta é WCAG 2.2 AA em todas as telas, mais os critérios AAA listados em `frontend/docs/acessibilidade.md` (contraste 7:1, aparência do foco, foco não obscurecido, alvos de 44 × 44 px, prevenção de erros em todas as ações, entre outros), seguindo também ABNT NBR 17225:2025, eMAG 3.1, LBI (art. 63), WAI-ARIA 1.2 e APG. Cobre cegueira, baixa visão, baixa sensibilidade ao contraste, daltonismo, fotofobia, campo visual reduzido e cores forçadas. Se acessibilidade entrar em conflito com estética, prazo ou funcionalidade, a acessibilidade vence. |
+| 2026-10-27 | **Biblioteca de UI (D-10):** React Aria Components, que implementa os padrões do ARIA Authoring Practices Guide (teclado, foco, papéis). Descarta shadcn/ui com Radix. |
+| 2026-10-27 | **Monorepo (D-17):** frontend e backend no mesmo repositório, nas pastas `frontend/` e `backend/`, cada um com os próprios `AGENTS.md`, `CONTEXT.md`, roadmap, specs e tickets. |
+| 2026-10-27 | **Frontend em TypeScript strict:** o código importado em JavaScript é migrado no EP-09 (`strict`, sem `any`). |
+| 2026-10-27 | **Roteador do frontend (D-21):** React Router. |
+| 2026-10-27 | **Validação das respostas da API no frontend (D-22):** Zod, a biblioteca mais usada para isso no ecossistema TypeScript. Um esquema gera o tipo e a validação; nenhum dado do backend chega à tela sem passar por ele. |
+| 2026-10-27 | **Cena 3D do hero (D-24):** fica. É decorativa (`aria-hidden`), desligada com "reduzir movimento" e ganha botão de pausar. O `Diamond.jsx`, outra cena guardada sem uso, é removido. |
+| 2026-10-27 | **Página inicial como landing page (D-27):** a `/` deixa de concentrar hero, reserva e sessões numa página longa. Vira uma landing page com um `h1` claro, a cena 3D do hero como fundo decorativo e destinos como links reais (`<a href>`): reservar, suas sessões, a tela do papel de quem entrou e a página de acessibilidade. Cada destino é uma rota com título e foco próprios, mais fácil de navegar por leitor de tela. |
+| 2026-10-27 | **Tela do massoterapeuta como PWA instalável no MVP (D-28):** manifesto e ícones, para instalar na tela inicial do celular e abrir direto na agenda, sem a barra do navegador. Sem service worker de push: o Web Push continua fora do MVP. |
+| 2026-10-27 | **Pedidos do frontend ao backend:** TK-04.09 (lista de espera do colaborador e ID da entrada no aviso de vaga), TK-04.10 (duração vigente da sessão exposta ao colaborador) e TK-03.10 (unidades para o colaborador), com a Mariana como responsável. O deploy do frontend na Vercel ganha ticket próprio (TK-13.06), separado da hospedagem do backend (TK-13.03). |
+| 2026-10-27 | **Fontes hospedadas junto do frontend (D-25):** sem Google Fonts em tempo de execução, para permitir uma CSP estrita e não enviar o IP do visitante a terceiros (LGPD). |
+| 2026-10-27 | **Testes do frontend em navegador real (D-26):** Playwright com `@axe-core/playwright`, para verificar contraste AAA, zoom de 400%, cores forçadas e movimento reduzido, que o jsdom não calcula. |
+| 2026-11-03 | **Aviso de que não vai (RF-03 / RN-01 / RN-10):** o colaborador cancela a própria sessão até o horário de início, mesmo dentro da antecedência mínima de cancelamento. Dentro desse prazo, o cancelamento é **tardio**: não conta como ausência, a vaga vai para a lista de espera com a oferta expirando no início da sessão, e os relatórios mostram os tardios à parte. O massoterapeuta é avisado de todo cancelamento pelo colaborador, no prazo ou tardio (MSG-08). A RN-01 deixa de bloquear o cancelamento do colaborador e passa a separar o cancelamento no prazo do tardio (TK-04.11). |
 | — | ORM: Prisma (ver "Arquitetura e stack"). |
 
 ## Responsáveis por seção
@@ -138,7 +166,7 @@ Preencher com base nas entrevistas. Estas respostas definem como a interface e a
 | Usa leitor de tela? Qual (NVDA, JAWS, TalkBack, VoiceOver)? Em computador ou celular? | [PREENCHER] |
 | Tem celular próprio e aceita usá-lo no trabalho? | [PREENCHER] |
 | Já usa Alexa ou outro assistente de voz? | [PREENCHER] |
-| Há uma Alexa por sala? A sala é fixa por massoterapeuta? | [PREENCHER] |
+| Há uma Alexa por sala? A sala é fixa por massoterapeuta? | Uma Alexa por sala; vários massoterapeutas atendem ao mesmo tempo na mesma sala (2026-10-23) |
 | Quantos massoterapeutas por unidade (São Paulo, Londrina)? | [PREENCHER] |
 | Como ele sabe hoje quem é o próximo e quando a pessoa chegou? | [PREENCHER] |
 | O que ele gostaria de fazer sozinho e hoje depende de alguém? | [PREENCHER] |
@@ -163,6 +191,8 @@ Preencher com base nas entrevistas. Estas respostas definem como a interface e a
 
 - Interface web acessível do massoterapeuta
 
+- Pesquisa de satisfação anônima após sessão concluída, com relatório agregado para o RH (RF-34, RN-18).
+
 ## Fora do MVP (próximos passos)
 
 - Login com Google (Google Workspace) — roadmap, só se der tempo
@@ -173,7 +203,6 @@ Preencher com base nas entrevistas. Estas respostas definem como a interface e a
 
 - Push da PWA (Web Push) e e-mail transacional
 
-- Avaliação da sessão (feedback) [DECIDIR: entra no MVP?]
 
 - Campainha virtual da Alexa (anúncio de chegada em tempo real)
 
@@ -196,6 +225,7 @@ Agrupem os requisitos por módulo. A coluna "Regras" liga cada requisito às reg
 | RF-07 | Consultar meus agendamentos (próximos e anteriores) | Colaborador | M | — |
 | RF-08 | Reagendar sessão | Colaborador | W (fora do MVP) | RN-01 |
 | RF-09 | Ver um card de lembrete da próxima sessão ao entrar na página (data, hora, massoterapeuta, sala) | Colaborador | [M/S/C/W] | — |
+| RF-34 | Responder à pesquisa anônima de satisfação após uma sessão concluída | Colaborador | M | RN-18 |
 
 ## Módulo 2 — Alexa (Massoterapeuta)
 
@@ -254,6 +284,12 @@ KPIs definidos para o MVP do RF-21 (D-08, decisão de 2026-10-21):
 | Taxa de cancelamento | Por data do atendimento, dia, semana ou mês: `(atendimentos cancelados ÷ atendimentos agendados) × 100`; exibir também o número absoluto de cancelamentos. |
 | Taxa de remarcação | Fora do MVP até que exista rastreamento explícito que vincule o atendimento cancelado à nova reserva. RF-08 permanece fora do MVP conforme D-03. |
 
+## Módulo 5 — Assistente informativo
+
+| ID | Requisito | Ator | Prioridade | Regras |
+| --- | --- | --- | --- | --- |
+| RF-34 | Tirar dúvidas sobre o funcionamento do sistema com respostas baseadas nos documentos oficiais, indicando as fontes e sem executar ações ou alterar agendamentos | Pessoa usuária | [M/S/C/W] | RNF-04 |
+
 ## Regras de negócio
 
 Números e condições do sistema. Os valores ficam em configuração, nunca fixos no código.
@@ -262,10 +298,10 @@ Os valores marcados como "no código" já estão no backend, mas **não foram ap
 
 | ID | Regra | Parâmetro | Valor |
 | --- | --- | --- | --- |
-| RN-01 | Antecedência mínima para agendamento e cancelamento | `BOOKING_MIN_NOTICE_MINUTES`, `CANCELLATION_MIN_NOTICE_MINUTES` | no código: 60 min para agendar, 120 min para cancelar [VALIDAR] |
+| RN-01 | Antecedência mínima para agendamento; para o cancelamento, separa o cancelamento no prazo do tardio, sem bloquear (decisão de 2026-11-03) | `BOOKING_MIN_NOTICE_MINUTES`, `CANCELLATION_MIN_NOTICE_MINUTES` | no código: 60 min para agendar, 120 min para cancelar [VALIDAR] |
 | RN-02 | Limite de atraso para sessão (depois disso, o check-in é recusado e a sessão pode virar ausência) | `LATE_ARRIVAL_TOLERANCE_MINUTES` | no código: 10 min [VALIDAR] |
 | RN-03 | Tolerância para confirmação após lembrete; sem confirmação, a vaga é liberada | `REMINDER_CONFIRMATION_TOLERANCE_MINUTES` | fora do protótipo (a reserva nasce confirmada); volta com o lembrete por e-mail. Valor inicial no código: 720 min [VALIDAR] |
-| RN-04 | Padrão de acessibilidade visual para interface web | — | proposta: WCAG 2.2 nível AA [VALIDAR] |
+| RN-04 | Padrão de acessibilidade visual para interface web: requisito fulcral do frontend | — | decidido em 2026-10-27 (D-23): WCAG 2.2 AA em tudo + critérios AAA, NBR 17225, eMAG, LBI, WAI-ARIA/APG; detalhe em `frontend/docs/acessibilidade.md` |
 | RN-05 | Duração da sessão | `SESSION_DURATION_MINUTES` (passo da grade: `SLOT_STEP_MINUTES`) | no código: 20 min [VALIDAR] |
 | RN-06 | Limite de reservas futuras ativas por colaborador | `MAX_ACTIVE_BOOKINGS_PER_EMPLOYEE` | no código: 1 [VALIDAR] |
 | RN-07 | Janela de agendamento (até quantos dias à frente) | `BOOKING_HORIZON_DAYS` | no código: 21 dias [VALIDAR] |
@@ -273,12 +309,13 @@ Os valores marcados como "no código" já estão no backend, mas **não foram ap
 | RN-09 | Antecedência máxima do check-in | `CHECK_IN_EARLY_MINUTES` | no código: 15 min [VALIDAR] |
 | RN-10 | Vaga liberada é oferecida à lista de espera por ordem de entrada; prazo para aceitar | `WAITLIST_ACCEPTANCE_MINUTES` | valor inicial: 30 min; validar com o RH antes da demonstração |
 | RN-11 | Antecedência do lembrete ao colaborador | `REMINDER_LEAD_MINUTES` | no código: 1440 min (24 h) [VALIDAR] |
-| RN-12 | Uma sessão não pode se sobrepor a outra do mesmo massoterapeuta nem da mesma sala | — | — |
-| RN-13 | O massoterapeuta só age sobre a própria agenda; ações que alteram dados exigem confirmação | — | [VALIDAR: a antecedência mínima de cancelamento (RN-01) vale para o massoterapeuta?] |
+| RN-12 | Uma sessão não pode se sobrepor a outra do mesmo massoterapeuta. Na mesma sala, vários massoterapeutas podem atender ao mesmo tempo | — | revisada em 2026-10-23 (antes proibia sobrepor a mesma sala); capacidade da sala: D-20 |
+| RN-13 | O massoterapeuta só age sobre a própria agenda; cancelar e bloquear exigem confirmação | — | decidido em 2026-10-22: a RN-01 não vale para o massoterapeuta (D-05); iniciar e finalizar não pedem confirmação |
 | RN-14 | "Quem chegou" considera os check-ins do dia do massoterapeuta | — | — |
-| RN-15 | Lembrete falado antes de cada sessão; apagado ou atualizado se a sessão mudar | antecedência do anúncio | proposta do `CONTEXT.md`: 5 min [VALIDAR] |
+| RN-15 | Lembrete falado antes de cada sessão, criado quando o massoterapeuta conversa com a Alexa e apagado se a sessão for cancelada; sem o nome do colaborador | antecedência do anúncio | proposta do `CONTEXT.md`: 5 min [VALIDAR] |
 | RN-16 | Sessão em andamento não finalizada pelo massoterapeuta é concluída automaticamente no horário de término | — | decidido em 2026-10-19 |
-| RN-17 | Uma mesma Alexa pode ser usada por vários massoterapeutas (n massoterapeutas : 1 Alexa) | — | decidido em 2026-10-22; como identificar quem está falando: D-19 |
+| RN-17 | Uma mesma Alexa pode ser usada por vários massoterapeutas (n massoterapeutas : 1 Alexa) | — | decidido em 2026-10-22; quem está falando: D-19, decidido em 2026-10-22 |
+| RN-18 | A pesquisa de satisfação não registra vínculo com colaborador nem sessão; não impede envios repetidos. O RH consulta somente agregados e comentários sem metadados de identidade ou sessão. | — | decidido em 2026-11-03 |
 
 ## Máquina de estados da sessão
 
@@ -320,8 +357,8 @@ Ponto a validar:
 
 | Integração | Uso | Fase (MVP / futuro) | Pontos de atenção | Responsável |
 | --- | --- | --- | --- | --- |
-| Alexa Skills Kit (skill customizada) | Consulta por voz (próximo, agenda do dia, quem chegou) e ações do massoterapeuta (cancelar, bloquear, iniciar e finalizar sessão) | MVP | Conta de desenvolvedor Amazon; endpoint HTTPS público no NestJS com verificação de assinatura; modelo de interação em pt-BR | [PREENCHER] |
-| Alexa Reminders API | Anúncio "sua próxima sessão começa em 5 minutos" | MVP [VALIDAR] | Permissão do usuário; criação fora da conversa ainda não confirmada; apagar o lembrete ao cancelar | [PREENCHER] |
+| Alexa Skills Kit (skill customizada) | Consulta por voz (próximo, agenda do dia, quem chegou) e ações do massoterapeuta (cancelar, bloquear, iniciar e finalizar sessão) | MVP | Conta de desenvolvedor Amazon; nome de invocação "pausa"; endpoint HTTPS público no NestJS com verificação de assinatura; resposta em até 8 s; modelo de interação em pt-BR; aparelhos da demo na conta do desenvolvedor ou como testadores beta | Guilherme |
+| Alexa Reminders API | Anúncio "sua próxima sessão começa em 5 minutos" | MVP [VALIDAR no aparelho, TK-07.09] | Permissão de lembretes no app da Alexa; criação só durante uma conversa (a Alexa cria os do dia quando o massoterapeuta fala com ela); apagar fora da conversa ao cancelar | Guilherme |
 | Google OAuth (Workspace) | Login dos colaboradores | Futuro (roadmap, se der tempo) | O backend já tem um modo `AUTH_MODE=google` parcial; verificar a migração da Semantix para o Google Workspace | [PREENCHER] |
 | Google Calendar API | Espelho para o colaborador | Futuro | Sem dado de saúde no evento | [PREENCHER] |
 
@@ -330,13 +367,13 @@ Ponto a validar:
 | Camada | Escolha | Justificativa |
 | --- | --- | --- |
 | Backend | Node.js (NestJS) | ASK SDK (Kit oficial de skills da Alexa) tem versão oficial para Node.js, sendo a mais consolidada do mercado |
-| Frontend | React - Aria ou shadcn/ui com Radix | Facilidade de implementação, possui bibliotecas de UI prontas e acessíveis |
-| Banco de dados | PostgreSQL | Banco de dados relacional mais robusto e confiável |
+| Frontend | React + Vite + TypeScript strict, React Aria Components (D-10), React Router (D-21), Zod (D-22) | React Aria implementa os padrões de acessibilidade do APG; TypeScript e Zod tipam e validam o contrato com a API |
+| Testes do frontend | Vitest + Testing Library + axe-core; Playwright + `@axe-core/playwright` (D-26) | Testes por papel e nome acessível; axe em navegador real calcula contraste, zoom e cores forçadas || Banco de dados | PostgreSQL | Banco de dados relacional mais robusto e confiável |
 | ORM | Prisma ORM | Curva de aprendizado mais baixa, migrações automatizadas, type-safety |
 | Agendador de tarefas | @nestjs/schedule | Sem infraestrutura robusta para MVP, lê o estado do banco e sobrevive a reinícios |
 | Testes | Jest | Framework de testes mais utilizado do mercado, "zero- config" |
-| Hospedagem | [PREENCHER] | [PREENCHER] (a Alexa exige um endpoint HTTPS público, inclusive para a demonstração) |
-| Repositório e CI | GitHub com GitHub Actions | Lint, testes e deploy automático a cada merge; integra bem com as LLM's |
+| Hospedagem | Frontend na Vercel; backend e PostgreSQL em contêiner sempre ligado (Render, Railway ou Fly.io, escolhido no TK-13.03) | A Alexa exige HTTPS público e resposta em até 8 s; os jobs do `@nestjs/schedule` precisam de processo sempre ligado (D-09, 2026-10-23) |
+| Repositório e CI | Monorepo no GitHub (`frontend/` e `backend/`, D-17) com GitHub Actions | Lint, testes e deploy automático a cada merge; integra bem com as LLM's |
 
 ## Catálogo de mensagens
 
@@ -346,21 +383,23 @@ Textos que o sistema envia aos usuários. Ficam num arquivo de textos, nunca esp
 | --- | --- | --- | --- | --- |
 | MSG-01 | Lembrete | [PREENCHER] | [PREENCHER] | [PREENCHER] |
 | MSG-02 | Confirmação da reserva | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| MSG-03 | Vaga liberada da lista de espera | Colaborador | Uma vaga ficou disponível para você em {data}, às {hora}. Acesse a página inicial para aceitar ou recusar. | Aceitar ou recusar no card da página inicial |
+| MSG-03 | Vaga liberada da lista de espera | Colaborador | Uma vaga ficou disponivel para voce em {data}, as {hora}, com {massoterapeuta}, na unidade {unidade}. A oferta expira em {prazo}. Acesse Suas sessoes para aceitar ou recusar. | Aceitar ou recusar na secao Suas sessoes |
 | MSG-04 | Confirmação de check-in | Colaborador | Check-in confirmado para {data}, às {hora}, na {sala}. | Ver agendamento ou fechar |
 | MSG-05 | Aviso de colaborador presente | Massoterapeuta | {primeiro_nome} chegou para o atendimento de hoje, às {hora}, na {sala}. | Abrir agenda ou fechar |
 | MSG-06 | Aviso de possível ausência | Massoterapeuta | {primeiro_nome} ainda não fez check-in para o atendimento de hoje, às {hora}, na {sala}. | Abrir agenda ou fechar |
+| MSG-07 | Cancelamento pelo massoterapeuta | Colaborador | Seu atendimento de {data}, às {hora}, com {primeiro_nome_massoterapeuta}, foi cancelado pelo massoterapeuta. Você pode reservar outro horário na página inicial. | Reservar outro horário ou fechar |
+| MSG-08 | Colaborador avisou que não vai | Massoterapeuta | {primeiro_nome} cancelou o atendimento de hoje, às {hora}. | Abrir agenda ou fechar |
 
 Comandos da Alexa (frases de exemplo e respostas; validar com os massoterapeutas):
 
 | ID | Comando | Exemplo de frase | Resposta (sugestão) |
 | --- | --- | --- | --- |
 | ALX-01 | Próximo atendimento (RF-11) | "quem é o próximo" | "Próximo: {primeiro_nome}, às {hora}." |
-| ALX-02 | Agenda do dia (RF-10) | "qual minha agenda de hoje" | "Hoje, {n} atendimentos. Primeiro: {primeiro_nome}, às {hora}." |
+| ALX-02 | Agenda do dia (RF-10) | "qual minha agenda de hoje" | "Hoje, {n} atendimentos. Quer que eu fale todos?" Com "sim": "{primeiro_nome} às {hora}, {primeiro_nome} às {hora} e {primeiro_nome} às {hora}." Com um só atendimento: "Hoje, 1 atendimento. Primeiro: {primeiro_nome}, às {hora}." |
 | ALX-03 | Quem chegou (RF-15) | "quem chegou" | "{primeiro_nome} chegou às {hora}." ou "Ninguém chegou ainda." |
 | ALX-04 | Cancelar atendimento (RF-12) | "cancelar o atendimento das {hora}" | Pergunta: "Cancelar o atendimento de {primeiro_nome} às {hora}. Confirma?" Depois: "Cancelado." |
-| ALX-05 | Bloquear agenda (RF-13) | "bloquear das {hora} às {hora}" | Pergunta: "Bloquear das {hora} às {hora}. Confirma?" Depois: "Bloqueado." [VALIDAR: e se houver atendimento no período?] |
-| ALX-06 | Iniciar sessão (RF-14) | "iniciar sessão" | "Sessão com {primeiro_nome} iniciada." |
+| ALX-05 | Bloquear agenda (RF-13) | "bloquear das {hora} às {hora}" | Pergunta: "Bloquear das {hora} às {hora}. Confirma?" Depois: "Bloqueado." Com atendimento no período, recusa e diz quantos são (D-04) |
+| ALX-06 | Iniciar sessão (RF-14) | "iniciar sessão" | "Sessão com {primeiro_nome} iniciada." (sem confirmação, decidido em 2026-10-22) |
 | ALX-07 | Finalizar sessão (RF-14) | "finalizar sessão" | "Sessão finalizada. Próximo: {primeiro_nome}, às {hora}." |
 | ALX-08 | Ajuda | "ajuda" | Lista curta do que perguntar |
 | ALX-09 | Parar | "parar" | Encerra |
@@ -372,14 +411,14 @@ Comandos da Alexa (frases de exemplo e respostas; validar com os massoterapeutas
 | Os cadastros (usuários, salas, grade) ficam com o RH ou existe um perfil de secretária? | RF-20, RF-23, RF-24, RF-25 | Com o RH; sem perfil de secretária (2026-10-16) | — | — |
 | A interface web do massoterapeuta entra no MVP ou só a Alexa? | RF-30 a RF-33 | As duas entram (2026-10-19) | — | — |
 | Como a Alexa identifica o massoterapeuta? | RF-17 e todo o Módulo 2 | Pareamento por código ao massoterapeuta (2026-10-16) | — | — |
-| Com uma Alexa compartilhada (RN-17), como ela sabe qual massoterapeuta está falando? Pela agenda da sala no momento, por novo pareamento a cada troca, ou outro meio? | RF-17, RN-17, todo o Módulo 2 | [PREENCHER] (D-19) | Guilherme | Antes do TK-07.05 |
+| Com uma Alexa compartilhada (RN-17), como ela sabe qual massoterapeuta está falando? Pela agenda da sala no momento, por novo pareamento a cada troca, ou outro meio? | RF-17, RN-17, todo o Módulo 2 | Vários massoterapeutas por aparelho; a Alexa deduz quem fala pela agenda do momento e, se não der, pergunta o nome (D-19, 2026-10-22) | — | — |
 | Existe confirmação de presença após o lembrete, com liberação automática da vaga? | RF-05, RN-03 | Sim, máquina de estados híbrida (2026-10-16) | — | — |
 | O papel do RH no código continua `ADMIN` ou passa a `HR`? | RF-20 a RF-27 | `HR`; `ADMIN` só para suporte (2026-10-19) | — | — |
 | Por qual canal o lembrete chega ao colaborador no protótipo? | RF-05, RF-09 | Nenhum envio; card na página. E-mail no roadmap (2026-10-19) | — | — |
 | Os valores das regras RN-01 a RN-11 estão corretos? | Módulos 1 e 2 | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| A Reminders API funciona com o lembrete criado pelo backend? | RF-16, RN-15 | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| O lembrete falado diz o nome do colaborador? (outra pessoa pode estar na sala) | RF-16 | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| Onde o backend será hospedado para a demonstração? | Alexa | [PREENCHER] | [PREENCHER] | [PREENCHER] |
+| A Reminders API funciona com o lembrete criado pelo backend? | RF-16, RN-15 | Não: só cria durante uma conversa. O lembrete é criado quando o massoterapeuta conversa com a Alexa (D-15, 2026-10-22); o TK-07.09 confirma no aparelho | — | — |
+| O lembrete falado diz o nome do colaborador? (outra pessoa pode estar na sala) | RF-16 | Não (D-16, 2026-10-22) | — | — |
+| Onde o backend será hospedado para a demonstração? | Alexa | Frontend na Vercel; backend e banco em contêiner sempre ligado (D-09, 2026-10-23) | — | — |
 | Quais KPIs o RH quer ver? | RF-21 | Decidido em 2026-10-21: turnos da manhã e tarde, volume pelos sete dias da semana, horários de início mais procurados e cancelamentos agrupados pela data do atendimento, com taxa e número absoluto. Remarcação fica fora do MVP até haver vínculo explícito entre reservas. | — | — |
 
 ## Orientações para o Claude Code

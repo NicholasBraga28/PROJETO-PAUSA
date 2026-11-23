@@ -69,27 +69,199 @@ describe("Waitlist (e2e)", () => {
   it("RF-04 RN-10: joins and leaves the waitlist in entry order", async () => {
     const firstEmployee = await createEmployee("first@example.com", "First Employee");
     const secondEmployee = await createEmployee("second@example.com", "Second Employee");
+    const bookedEmployee = await createEmployee("booked@example.com", "Booked Employee");
     const { therapist, room } = await createSchedule();
-    await createOccupiedAppointment(firstEmployee.id, therapist.id, room.id);
+    await createOccupiedAppointment(bookedEmployee.id, therapist.id, room.id);
 
     const first = await request(app.getHttpServer())
       .post("/api/booking/waitlist")
       .set("x-user-id", firstEmployee.id)
-      .send({ therapistId: therapist.id, desiredStartsAt: STARTS_AT, desiredEndsAt: ENDS_AT })
+      .send({ therapistId: therapist.id, locationId: LOCATION_ID, desiredStartsAt: STARTS_AT, desiredEndsAt: ENDS_AT })
       .expect(201);
     const second = await request(app.getHttpServer())
       .post("/api/booking/waitlist")
       .set("x-user-id", secondEmployee.id)
-      .send({ therapistId: therapist.id, desiredStartsAt: STARTS_AT, desiredEndsAt: ENDS_AT })
+      .send({ therapistId: therapist.id, locationId: LOCATION_ID, desiredStartsAt: STARTS_AT, desiredEndsAt: ENDS_AT })
       .expect(201);
 
     expect(first.body.status).toBe("WAITING");
     expect(second.body.status).toBe("WAITING");
+    const listed = await request(app.getHttpServer())
+      .get("/api/booking/waitlist")
+      .set("x-user-id", firstEmployee.id)
+      .expect(200);
+    expect(listed.body.items[0]).toEqual(
+      expect.objectContaining({
+        therapistId: therapist.id,
+        therapistName: "Ana Souza",
+        locationId: LOCATION_ID,
+        locationName: expect.any(String),
+      }),
+    );
     await request(app.getHttpServer())
       .delete(`/api/booking/waitlist/${first.body.id}`)
       .set("x-user-id", firstEmployee.id)
       .expect(204);
     expect((await prisma.waitlistEntry.findUniqueOrThrow({ where: { id: first.body.id } })).status).toBe("CANCELLED");
+  });
+
+  it("TK-04.06 RF-04: rejects waitlist entries for the employee's own appointment", async () => {
+    const employee = await createEmployee("own-appointment@example.com", "Booked Employee");
+    const { therapist, room } = await createSchedule();
+    await createOccupiedAppointment(employee.id, therapist.id, room.id);
+
+    await request(app.getHttpServer())
+      .post("/api/booking/waitlist")
+      .set("x-user-id", employee.id)
+      .send({ therapistId: therapist.id, locationId: LOCATION_ID, desiredStartsAt: STARTS_AT, desiredEndsAt: ENDS_AT })
+      .expect(409);
+  });
+
+  it("TK-04.09 RF-04 RN-10: lists only the employee waitlist entries in creation order with spoken status", async () => {
+    const employee = await createEmployee("employee@example.com", "Carlos Lima");
+    const otherEmployee = await createEmployee("other@example.com", "Ana Souza");
+    const { therapist } = await createSchedule();
+    const older = await prisma.waitlistEntry.create({
+      data: {
+        employeeId: employee.id,
+        therapistId: therapist.id,
+        desiredStartsAt: new Date(STARTS_AT),
+        desiredEndsAt: new Date(ENDS_AT),
+        createdAt: new Date("2026-10-18T12:00:00Z"),
+      },
+    });
+    const offered = await prisma.waitlistEntry.create({
+      data: {
+        employeeId: employee.id,
+        therapistId: therapist.id,
+        desiredStartsAt: new Date(STARTS_AT),
+        desiredEndsAt: new Date(ENDS_AT),
+        status: "NOTIFIED",
+        offeredAt: NOW,
+        offerExpiresAt: new Date("2026-10-19T12:30:00Z"),
+        createdAt: new Date("2026-10-18T13:00:00Z"),
+      },
+    });
+    const expired = await prisma.waitlistEntry.create({
+      data: {
+        employeeId: employee.id,
+        therapistId: therapist.id,
+        desiredStartsAt: new Date(STARTS_AT),
+        desiredEndsAt: new Date(ENDS_AT),
+        status: "EXPIRED",
+        createdAt: new Date("2026-10-18T14:00:00Z"),
+      },
+    });
+    const cancelled = await prisma.waitlistEntry.create({
+      data: {
+        employeeId: employee.id,
+        therapistId: therapist.id,
+        desiredStartsAt: new Date(STARTS_AT),
+        desiredEndsAt: new Date(ENDS_AT),
+        status: "CANCELLED",
+        createdAt: new Date("2026-10-18T15:00:00Z"),
+      },
+    });
+    const converted = await prisma.waitlistEntry.create({
+      data: {
+        employeeId: employee.id,
+        therapistId: therapist.id,
+        desiredStartsAt: new Date(STARTS_AT),
+        desiredEndsAt: new Date(ENDS_AT),
+        status: "CONVERTED",
+        createdAt: new Date("2026-10-18T16:00:00Z"),
+      },
+    });
+    await prisma.waitlistEntry.create({
+      data: {
+        employeeId: otherEmployee.id,
+        therapistId: therapist.id,
+        desiredStartsAt: new Date(STARTS_AT),
+        desiredEndsAt: new Date(ENDS_AT),
+      },
+    });
+
+    const response = await request(app.getHttpServer())
+      .get("/api/booking/waitlist")
+      .set("x-user-id", employee.id)
+      .expect(200);
+
+    expect(response.body.items.map(({ id }: { id: string }) => id)).toEqual([
+      older.id,
+      offered.id,
+      expired.id,
+      cancelled.id,
+      converted.id,
+    ]);
+    expect(response.body.items[0].spokenText).toContain("lista de espera");
+    expect(response.body.items[1].spokenText).toContain("9h30");
+    expect(response.body.items[2].spokenText).toContain("expirou");
+    expect(response.body.items[3].spokenText).toContain("cancelada");
+    expect(response.body.items[4].spokenText).toContain("confirmada");
+    expect(response.body.spokenText).toBeTruthy();
+  });
+
+  it("TK-04.09 RF-04 RN-10: announces an empty waitlist", async () => {
+    const employee = await createEmployee("empty@example.com", "Carlos Lima");
+
+    const response = await request(app.getHttpServer())
+      .get("/api/booking/waitlist")
+      .set("x-user-id", employee.id)
+      .expect(200);
+
+    expect(response.body.items).toEqual([]);
+    expect(response.body.spokenText).toBe("Você não tem entradas na lista de espera.");
+  });
+
+  it("TK-04.09 RF-04 RN-10: hides another employee waitlist entry on direct operations", async () => {
+    const employee = await createEmployee("owner@example.com", "Carlos Lima");
+    const otherEmployee = await createEmployee("visitor@example.com", "Maria Alves");
+    const { therapist } = await createSchedule();
+    const entry = await prisma.waitlistEntry.create({
+      data: {
+        employeeId: employee.id,
+        therapistId: therapist.id,
+        desiredStartsAt: new Date(STARTS_AT),
+        desiredEndsAt: new Date(ENDS_AT),
+      },
+    });
+
+    await request(app.getHttpServer())
+      .delete(`/api/booking/waitlist/${entry.id}`)
+      .set("x-user-id", otherEmployee.id)
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(`/api/booking/waitlist/${entry.id}/accept`)
+      .set("x-user-id", otherEmployee.id)
+      .expect(404);
+  });
+
+  it("TK-04.09 RF-04 RN-10: includes the waitlist entry ID in its vacancy notification", async () => {
+    const employee = await createEmployee("employee@example.com", "Carlos Lima");
+    const waitingEmployee = await createEmployee("waiting@example.com", "Maria Alves");
+    const { therapist, room } = await createSchedule();
+    const appointment = await createOccupiedAppointment(employee.id, therapist.id, room.id);
+    const entry = await prisma.waitlistEntry.create({
+      data: {
+        employeeId: waitingEmployee.id,
+        therapistId: therapist.id,
+        desiredStartsAt: new Date(STARTS_AT),
+        desiredEndsAt: new Date(ENDS_AT),
+      },
+    });
+
+    await request(app.getHttpServer())
+      .delete(`/api/booking/appointments/${appointment.id}`)
+      .set("x-user-id", employee.id)
+      .expect(200);
+    const response = await request(app.getHttpServer())
+      .get("/api/notifications")
+      .set("x-user-id", waitingEmployee.id)
+      .expect(200);
+
+    expect(response.body.items).toContainEqual(
+      expect.objectContaining({ kind: "WAITLIST_VACANCY", waitlistEntryId: entry.id }),
+    );
   });
 
   it("RF-04 RN-10: offers the released appointment to the first compatible candidate with a spoken card", async () => {
@@ -140,6 +312,41 @@ describe("Waitlist (e2e)", () => {
 
     expect(response.body.status).toBe("CONFIRMED");
     expect((await prisma.waitlistEntry.findUniqueOrThrow({ where: { id: entry.id } })).status).toBe("CONVERTED");
+  });
+
+  it("TK-04.06 RF-04 RN-10: declining an offer advances the same location and therapist queue", async () => {
+    const firstEmployee = await createEmployee("decline-first@example.com", "First Employee");
+    const nextEmployee = await createEmployee("decline-next@example.com", "Second Employee");
+    const { therapist } = await createSchedule();
+    const offered = await prisma.waitlistEntry.create({
+      data: {
+        employeeId: firstEmployee.id,
+        therapistId: therapist.id,
+        locationId: LOCATION_ID,
+        desiredStartsAt: new Date(STARTS_AT),
+        desiredEndsAt: new Date(ENDS_AT),
+        status: "NOTIFIED",
+        offeredAt: NOW,
+        offerExpiresAt: new Date("2026-10-19T12:30:00Z"),
+      },
+    });
+    const next = await prisma.waitlistEntry.create({
+      data: {
+        employeeId: nextEmployee.id,
+        therapistId: therapist.id,
+        locationId: LOCATION_ID,
+        desiredStartsAt: new Date(STARTS_AT),
+        desiredEndsAt: new Date(ENDS_AT),
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post(`/api/booking/waitlist/${offered.id}/decline`)
+      .set("x-user-id", firstEmployee.id)
+      .expect(204);
+
+    expect((await prisma.waitlistEntry.findUniqueOrThrow({ where: { id: offered.id } })).status).toBe("DECLINED");
+    expect((await prisma.waitlistEntry.findUniqueOrThrow({ where: { id: next.id } })).status).toBe("NOTIFIED");
   });
 
   it("RF-04 RN-10: expires an offer idempotently and advances to the next candidate", async () => {

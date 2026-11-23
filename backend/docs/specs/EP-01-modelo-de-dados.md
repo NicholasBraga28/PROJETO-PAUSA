@@ -95,7 +95,7 @@ Nenhuma rota nova é criada neste épico. O comportamento visível da API existe
 
 40. Como massoterapeuta, quero que minha Alexa fique ligada a mim depois do pareamento, para que tudo o que eu perguntar valha para a minha agenda.
 41. Como massoterapeuta, quero poder ter mais de uma Alexa pareada (por exemplo, uma em cada sala em que trabalho), para usar a que estiver perto.
-42. Como RH, quero que um aparelho fique pareado a um único massoterapeuta por vez, para que ninguém ouça a agenda de outra pessoa.
+42. Como RH, quero que um aparelho fique pareado a um único massoterapeuta por vez, para que ninguém ouça a agenda de outra pessoa. _(Revisado em 2026-10-22/23 (D-19, RN-17): um aparelho atende vários massoterapeutas. `AlexaDevice` deixa de ter `therapist_id` e ganha a tabela `alexa_device_therapists` (TK-07.05, spec do EP-07), combinado com a Mariana.)_
 43. Como RH, quero que o código de pareamento tenha validade e só possa ser usado uma vez, para que um código anotado num papel não sirva depois.
 44. Como RH, quero saber quem gerou cada código de pareamento, para auditar o processo.
 45. Como desenvolvedor, quero que o uso único do código possa ser garantido no banco, para que dois aparelhos não consumam o mesmo código ao mesmo tempo.
@@ -202,7 +202,7 @@ A tabela abaixo é o contrato do TK-01.04. Ela reproduz a tabela "Máquina de es
 
 ### TK-01.05 — `AlexaDevice` e código de pareamento
 
-- Tabela `alexa_devices`: ID, `device_id` da Amazon (único), massoterapeuta (FK) e data do pareamento. Um aparelho pertence a um único massoterapeuta. Um massoterapeuta pode ter vários aparelhos. Parear de novo um aparelho já pareado troca o dono (a regra fica no TK-07.05; o schema só não impede).
+- Tabela `alexa_devices`: ID, `device_id` da Amazon (único), massoterapeuta (FK) e data do pareamento. Um aparelho pertence a um único massoterapeuta. Um massoterapeuta pode ter vários aparelhos. Parear de novo um aparelho já pareado troca o dono (a regra fica no TK-07.05; o schema só não impede). _(Revisado em 2026-10-22/23 (D-19, RN-17): um aparelho atende vários massoterapeutas. `AlexaDevice` deixa de ter `therapist_id` e ganha a tabela `alexa_device_therapists` (TK-07.05, spec do EP-07), combinado com a Mariana.)_
 - Tabela `alexa_pairing_codes`: ID, código, massoterapeuta (FK), quem gerou (FK para `users`, RH ou suporte), validade (`expires_at`), uso (`consumed_at`, nulo até ser usado) e aparelho que o usou (FK para `alexa_devices`, nulo até ser usado).
 - Uso único garantido no banco: índice único parcial no código entre os códigos ainda não usados. O consumo (TK-07.05) é uma atualização condicional (não usado e dentro da validade), para que dois aparelhos não usem o mesmo código ao mesmo tempo.
 - Formato do código (por exemplo, só dígitos, para o slot numérico da Alexa), tempo de validade e regra de "um código ativo por massoterapeuta" são do TK-03.08. Este ticket só modela.
@@ -312,7 +312,7 @@ O EP-01 não cria texto falado nem tela. O que ele toca e chega ao massoterapeut
 - **Dado** um atendimento legado sem sala, coberto por um período da agenda do mesmo massoterapeuta, **quando** a migração roda, **então** ele recebe a sala desse período.
 - **Dado** um atendimento legado sem sala e sem período correspondente, **quando** a migração roda, **então** ela falha com mensagem que indica o problema.
 - **Dado** um atendimento `CONFIRMED` das 14h às 14h20 com o massoterapeuta A, **quando** se grava outro, de qualquer estado que ocupa o horário, com A das 14h10 às 14h30, **então** o banco recusa (RN-12).
-- **Dado** um atendimento `CONFIRMED` na sala S das 14h às 14h20, **quando** se grava outro na sala S, com outro massoterapeuta, das 14h às 14h20, **então** o banco recusa (RN-12).
+- **Dado** um atendimento `CONFIRMED` na sala S das 14h às 14h20, **quando** se grava outro na sala S, com outro massoterapeuta, das 14h às 14h20, **então** o banco recusa (RN-12). _(Revisado em 2026-10-23: vários massoterapeutas podem atender ao mesmo tempo na mesma sala (RN-12 revisada, `docs/requisitos.md`). A restrição por sala sai no TK-03.09; a do mesmo massoterapeuta continua.)_
 - **Dado** um atendimento `CANCELLED` ou `RELEASED` das 14h às 14h20, **quando** se grava outro no mesmo horário, massoterapeuta e sala, **então** o banco aceita.
 - **Dado** um atendimento das 14h às 14h20, **quando** se grava outro das 14h20 às 14h40 com o mesmo massoterapeuta e a mesma sala, **então** o banco aceita (intervalo `[)`).
 - **Dado** uma reserva feita pela rota legada, **quando** ela é gravada, **então** nasce `CONFIRMED`.
@@ -368,7 +368,7 @@ O EP-01 não cria texto falado nem tela. O que ele toca e chega ao massoterapeut
 - Sessão `CHECKED_IN` nunca iniciada: D-06, implementada no TK-05.05.
 - Geração do código de pareamento (formato, validade, um ativo por massoterapeuta): TK-03.08. Intent "vincular código": TK-07.05.
 - Edição dos parâmetros pelo RH, com validação e auditoria: TK-03.07.
-- Coluna de lembrete da Alexa no atendimento (`lembrete_alexa_id`): TK-07.10.
+- Coluna de lembrete da Alexa no atendimento (`lembrete_alexa_id`): TK-07.10. _(Revisado em 2026-10-22: vira a tabela `alexa_reminders`, porque um atendimento pode ter lembrete em mais de um aparelho; spec do EP-07.)_
 - Primeiro nome derivado e formatação falada: TK-06.01.
 - Tabela de avisos ao massoterapeuta e `NotificationChannel`: TK-05.01.
 - Dados e roteiro de demonstração além do seed: TK-13.05.

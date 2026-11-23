@@ -14,6 +14,7 @@ import {
 import { CurrentActor } from "../auth/decorators/current-actor.decorator";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { RequestActor } from "../auth/request-actor";
+import { CopySchedulesDto } from "./dto/copy-schedules.dto";
 import { CreateScheduleSlotDto } from "./dto/create-schedule-slot.dto";
 import { QuerySchedulesDto } from "./dto/query-schedules.dto";
 import { UpdateScheduleSlotDto } from "./dto/update-schedule-slot.dto";
@@ -42,6 +43,11 @@ export class SchedulesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@CurrentActor() actor: RequestActor, @Param("id", ParseUUIDPipe) id: string) {
     await this.schedules.remove(actor.id, id);
+  }
+
+  @Post("copy")
+  copy(@CurrentActor() actor: RequestActor, @Body() input: CopySchedulesDto) {
+    return this.schedules.copy(actor.id, input);
   }
 
   @Post()

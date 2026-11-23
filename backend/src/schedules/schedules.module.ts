@@ -6,10 +6,12 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { PolicyService } from "../domain/policy.service";
 import { SchedulesController } from "./schedules.controller";
 import { SchedulesService } from "./schedules.service";
+import { WorkingTherapistsService } from "./working-therapists.service";
 
 @Module({
   imports: [BusinessRulesModule, ClockModule, PrismaModule],
   controllers: [SchedulesController],
-  providers: [AuditService, PolicyService, SchedulesService],
+  providers: [AuditService, PolicyService, SchedulesService, WorkingTherapistsService],
+  exports: [WorkingTherapistsService],
 })
 export class SchedulesModule {}

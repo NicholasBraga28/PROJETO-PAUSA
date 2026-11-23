@@ -4,8 +4,8 @@ Status: ⬜ Planejada (especificação do épico)
 Marco: M2 / M4  
 Épico: EP-03 · Roadmap: `docs/roadmap.md`  
 Triage: `ready-for-review`  
-Tickets: TK-03.01 a TK-03.08  
-Requisitos: RF-17, RF-20, RF-23, RF-24, RF-25, RF-26, RF-27, RN-05, RN-08, RNF-01, RNF-04, RNF-05  
+Tickets: TK-03.01 a TK-03.08 e TK-03.10 (TK-03.09 continua bloqueado por D-20)
+Requisitos: RF-01, RF-17, RF-20, RF-23, RF-24, RF-25, RF-26, RF-27, RN-05, RN-08, RNF-01, RNF-04, RNF-05
 Decisões relacionadas: D-01, D-02 (decidida em 2026-10-20), D-04 (decidida em 2026-10-20)  
 
 Criada em 2026-10-20. Fonte de verdade: `docs/requisitos.md`. Onde esta spec e o `requisitos.md` divergirem, vale o `requisitos.md`.
@@ -42,6 +42,7 @@ Ao término do EP-03:
 3. **Consistência da Agenda Diária (`ScheduleSlot`):**
    - Um período deve respeitar o horário de funcionamento da empresa (`RN-08`).
    - **Garantia de não-sobreposição:** É rejeitado qualquer período que coincida com outro período do mesmo massoterapeuta ou da mesma sala.
+     > Revisado em 2026-10-23: vários massoterapeutas podem atender ao mesmo tempo na mesma sala (RN-12 revisada, `docs/requisitos.md`). A restrição por sala sai no TK-03.09; a do mesmo massoterapeuta continua.
    - **Garantia contra órfãos:** É proibido editar o horário ou remover um período de agenda se já existirem atendimentos agendados (`BOOKED`, `CONFIRMED`, `CHECKED_IN`, `IN_PROGRESS`) naquele intervalo (`TK-03.04`).
 4. **Regeneração de Token de Sala (QR Code):**
    - Rota `POST /rooms/:id/regenerate-token` gera um novo UUID para `checkInToken`, invalidando imediatamente o QR Code anterior impresso na porta da sala.
@@ -72,7 +73,7 @@ Todas as tabelas necessárias já foram criadas nas migrações do `EP-01`:
 - `AlexaPairingCode` (`code`, `therapistId`, `expiresAt`, `consumedAt`, `createdById`).
 - `AuditEvent` (`actorId`, `action`, `entityType`, `entityId`, `data`).
 
-Nenhuma migração nova de schema é necessária para este épico.
+Para o TK-03.10, é necessária uma migration para adicionar `Location.active`; os demais modelos e migrations descritos nesta spec permanecem como estão.
 
 ---
 
@@ -247,6 +248,16 @@ Remove um período da agenda.
 }
 ```
 * Comportamento (Decisão D-04): Se houver atendimentos marcados no período do bloqueio, a API recusa com `409 Conflict` e devolve a lista dos agendamentos concorrentes.
+* Regras do bloqueio (decididas em 2026-10-23, na spec do EP-06). Ficam num único service do módulo `schedule-blocks/`, criado neste ticket e reaproveitado pelo bloqueio do massoterapeuta (TK-06.07). O service recebe o massoterapeuta dono da agenda e o ator; as regras são as mesmas para o RH e para o massoterapeuta:
+  - início antes do fim;
+  - início não anterior a agora (`Clock`);
+  - início e fim no mesmo dia local em `America/Sao_Paulo` (vários dias = um bloqueio por dia);
+  - dentro do horário de funcionamento (RN-08, lido do `BusinessRulesService`); pode cobrir o almoço;
+  - não precisa estar dentro de um `ScheduleSlot`;
+  - D-04: atendimentos em `BOOKED`, `CONFIRMED`, `CHECKED_IN`, `POSSIBLE_NO_SHOW` ou `IN_PROGRESS` sobrepostos ao período → `409` com a lista em ordem cronológica e um `spokenText` com quantos são e o primeiro;
+  - outro bloqueio do mesmo massoterapeuta sobreposto → `409` ("Esse período já está bloqueado.").
+* O service também oferece a validação sem gravar (prévia), usada pelo massoterapeuta antes da confirmação; a criação reaplica as regras numa transação.
+* Responsável: Guilherme (o EP-03 restante passou para ele em 2026-10-23).
 
 ---
 
@@ -354,6 +365,10 @@ errors: {
   - **Dado** que existe uma reserva às 15h20;
   - **Quando** o RH tenta bloquear das 15h às 16h;
   - **Então** a criação é recusada informando a reserva existente.
+- **Cenário 3: Regras de período (2026-10-23)**
+  - **Dado** o horário de funcionamento das 8h às 18h;
+  - **Quando** o RH tenta bloquear um período no passado, que atravessa dias, fora do funcionamento ou sobreposto a outro bloqueio do mesmo massoterapeuta;
+  - **Então** a criação é recusada com uma frase que diz o que corrigir; um período que cobre o almoço ou fica fora de um `ScheduleSlot` é aceito.
 
 ### TK-03.07 — Edição dos Parâmetros de Regras de Negócio
 - **Cenário 1: Atualização de duração da sessão**
@@ -389,6 +404,68 @@ errors: {
 3. **Decisão D-01 (Validação de Parâmetros com RH):**
    * *Questão:* A duração da sessão é 20 min? O horário de funcionamento é 09h às 18h com almoço das 12h às 13h em ambas as unidades?
    * *Situação:* No código atual esses valores são os defaults, aguardando validação final na EP-14.
+
+---
+
+## TK-03.10 — Unidades ativas para o colaborador (RF-01)
+
+Esta seção complementa o escopo do EP-03 somente para o TK-03.10. O TK-03.09 e a decisão D-20 não fazem parte deste adendo e permanecem bloqueados.
+
+### Objetivo
+
+Disponibilizar ao colaborador a lista de unidades ativas, com código, nome e fuso, para que o filtro de unidade não dependa dos horários retornados pela disponibilidade.
+
+### Contrato da API
+
+#### `GET /locations`
+
+- Identificação: cabeçalho `x-user-id` no modo de protótipo.
+- Permissão: somente `EMPLOYEE`.
+- Parâmetros: nenhum.
+- `200 OK`: lista ordenada alfabeticamente por `name`, contendo somente unidades ativas e somente os campos públicos abaixo:
+
+```json
+[
+  {
+    "code": "SAO_PAULO",
+    "name": "São Paulo",
+    "timezone": "America/Sao_Paulo"
+  }
+]
+```
+
+- Sem unidades ativas: `200 OK` com `[]`.
+- `401`: `messages.errors.notIdentified` ("Você ainda não se identificou: escolha um usuário na tela de entrada.").
+- `403`: `messages.errors.accessDenied` ("Seu perfil não tem acesso a esta função: volte para a página inicial.").
+- Não há erro de domínio ou mensagem própria no catálogo para esta consulta.
+
+### Modelo de dados
+
+O modelo `Location` atual não tem status. Adicionar `active Boolean @default(true)` (mapeado para `active` em `locations`) e migration, para tornar explícita a seleção de unidades ativas. Este ticket só consulta esse campo; ativar/desativar unidades não faz parte do contrato.
+
+### Critérios de aceite
+
+- **Dado** unidades ativas e inativas, **Quando** um colaborador identificado consulta `GET /locations`, **Então** recebe `200` somente com as unidades ativas, cada uma com `code`, `name` e `timezone`, em ordem alfabética pelo nome.
+- **Dado** que não há unidades ativas, **Quando** um colaborador consulta `GET /locations`, **Então** recebe `200` com uma lista vazia.
+- **Dado** que a requisição não tem identificação válida, **Quando** chama `GET /locations`, **Então** recebe `401` com a mensagem `notIdentified` do catálogo.
+- **Dado** um usuário identificado que não é `EMPLOYEE`, **Quando** chama `GET /locations`, **Então** recebe `403` com a mensagem `accessDenied` do catálogo.
+- **Dado** que uma unidade tem fuso IANA configurado, **Quando** o consumidor usa o `timezone` para apresentar horários retornados pela disponibilidade, **Então** os horários são exibidos no fuso da unidade, sem reinterpretar timestamps UTC no fuso local do dispositivo.
+
+### Acessibilidade, fusos e segurança
+
+- A rota não retorna `spokenText`: código, nome e fuso são dados para compor controles de filtro, e não um anúncio contextual. O frontend deve fornecer nome acessível com o nome da unidade e anunciar a seleção no contexto da tela.
+- A ordem por nome torna a navegação por teclado previsível. O conteúdo não inclui texto visual ou informação que precise de cor para ser compreendida.
+- `timezone` é um identificador IANA, não um offset fixo; horários permanecem associados ao fuso selecionado mesmo quando exibidos em outro dispositivo.
+- Aplicar autenticação e autorização da matriz de permissões; não retornar IDs internos, dados de salas ou `checkInToken`. A resposta não deve incluir dados pessoais.
+
+### Pergunta em aberto
+
+- Qual módulo ou ticket será responsável por ativar e desativar unidades? Até lá, este endpoint apenas filtra pelo campo `Location.active`.
+
+### Testes esperados
+
+- E2E de resposta, campos permitidos, ordenação, filtro de ativas, retorno vazio e matriz de permissões (`EMPLOYEE`, demais papéis e anônimo).
+- Teste de persistência/migration do status `active` com default `true`.
 
 ---
 

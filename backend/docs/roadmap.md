@@ -63,21 +63,24 @@ Ao final rode npm run test, npm run lint e npm run build, e atualize o status no
 | Trilha | Sigla | Onde |
 | --- | --- | --- |
 | Backend | BE | `backend/` (NestJS) |
-| Frontend | FE | aplicação web React (repositório ou pasta a definir, ver D-17) |
 | Alexa | ALX | skill customizada: modelo de interação versionado no repositório + endpoint no backend |
-| Infraestrutura | INF | CI, hospedagem HTTPS, deploy, dados de demonstração |
+| Infraestrutura | INF | CI do backend, túnel da Alexa, hospedagem HTTPS e deploy do backend, dados de demonstração |
 | Produto | PRD | validação com massoterapeutas e RH, valores das regras, roteiro da demo |
+
+**Este roadmap cuida só do backend** (desde 2026-10-27). O frontend (épicos EP-09 a EP-12, CI e deploy do frontend: TK-13.01 e TK-13.06) tem roadmap próprio em `frontend/docs/roadmap.md`, com as próprias decisões (D-10, D-21 a D-28). Os IDs são globais no repositório (monorepo, D-17): nenhum épico, ticket ou decisão se repete entre os dois roadmaps.
 
 ### Marcos
 
-| Marco | O que dá para demonstrar | Épicos |
+Os marcos M2 a M5 são do projeto inteiro; aqui está a parte do backend. A parte do frontend de cada marco está em `frontend/docs/roadmap.md`.
+
+| Marco | O que o backend entrega | Épicos do backend |
 | --- | --- | --- |
 | **M0 — Fundação** ✅ | Backend com lint, validação de ambiente, `Clock` e parâmetros de negócio centralizados | EP-00 (parcial) |
 | **M1 — Domínio** ✅ | Modelo de dados final, máquina de estados testada, papéis e identificação | EP-01, EP-02 (concluídos em 2026-10-19 e 2026-10-20) |
-| **M2 — Colaborador agenda sozinho** | Colaborador vê horários, reserva, cancela, entra na fila e faz check-in pela web | EP-03, EP-04, EP-05, EP-09, EP-10 |
-| **M3 — Massoterapeuta autônomo** | Massoterapeuta passa o dia só com a tela acessível e a Alexa, sem pedir informação a ninguém (métrica principal) | EP-06, EP-07, EP-11 |
-| **M4 — RH no controle** | RH monta agendas, edita parâmetros, vê KPIs e auditoria | EP-08, EP-12 |
-| **M5 — Demonstração** | Sistema publicado com HTTPS, dados de demo, roteiro ensaiado e validado com os massoterapeutas | EP-13, EP-14 |
+| **M2 — Colaborador agenda sozinho** | API de horários, reserva, cancelamento, lista de espera e check-in | EP-03, EP-04, EP-05 |
+| **M3 — Massoterapeuta autônomo** | API do massoterapeuta com `spokenText` e skill da Alexa, para ele passar o dia sem pedir informação a ninguém (métrica principal) | EP-06, EP-07 |
+| **M4 — RH no controle** | API de cadastros, agendas, parâmetros, KPIs e auditoria | EP-03, EP-08 |
+| **M5 — Demonstração** | Backend publicado com HTTPS, dados de demo, roteiro ensaiado e validado com os massoterapeutas | EP-13, EP-14 |
 
 ### Dependências entre épicos
 
@@ -91,38 +94,32 @@ graph LR
   EP05 --> EP06[EP-06 API do massoterapeuta]
   EP06 --> EP07[EP-07 Alexa]
   EP04 --> EP08[EP-08 KPIs e auditoria]
-  EP02 --> EP09[EP-09 Base do frontend]
-  EP09 --> EP10[EP-10 Telas do colaborador]
-  EP04 --> EP10
-  EP09 --> EP11[EP-11 Tela do massoterapeuta]
-  EP06 --> EP11
-  EP09 --> EP12[EP-12 Telas do RH]
-  EP03 --> EP12
-  EP08 --> EP12
   EP13[EP-13 Infra e demo] -.paralelo.-> EP07
-  EP14[EP-14 Produto e validação] -.paralelo.-> EP11
+  EP14[EP-14 Produto e validação] -.paralelo.-> EP07
 ```
+
+O frontend consome os épicos EP-02 a EP-08; as dependências dele estão em `frontend/docs/roadmap.md` ("O que o frontend precisa do backend").
 
 **Comece cedo, em paralelo:**
 - **TK-07.01**, o spike da skill da Alexa, e **TK-07.09**, o spike da Reminders API (Guilherme): são os maiores riscos técnicos do projeto.
-- **EP-14**, a validação com os massoterapeutas: as respostas mudam a interface e as frases da Alexa.
+- **EP-14**, a validação com os massoterapeutas: as respostas mudam as frases da Alexa, os `spokenText` da API e a interface.
 
 ## Divisão do trabalho
 
-Duas pessoas, divididas por área do domínio, não por camada. Cada uma leva a sua área do backend até a tela.
+Duas pessoas, divididas por área do domínio, não por camada. Cada uma leva a sua área do backend até a tela; a divisão das telas está no roadmap do frontend.
 
-| Pessoa | Área | Épicos que lidera (escreve a spec e revisa os tickets) |
+| Pessoa | Área no backend | Épicos que lidera (escreve a spec e revisa os tickets) |
 | --- | --- | --- |
-| **Mariana** | Núcleo do domínio e jornada do colaborador e do RH: modelo de dados, agenda, reserva, lista de espera, presença, KPIs e as telas do colaborador e do RH | EP-01, EP-03, EP-04, EP-05, EP-08, EP-10, EP-12 |
-| **Guilherme** | Tudo o que o massoterapeuta toca: Alexa, API do massoterapeuta, avisos, identificação, base acessível do frontend, tela do massoterapeuta e infraestrutura | EP-00, EP-02, EP-06, EP-07, EP-09, EP-11, EP-13, EP-14 |
+| **Mariana** | Núcleo do domínio e jornada do colaborador e do RH: modelo de dados, agenda, reserva, lista de espera, presença, KPIs | EP-01, EP-03, EP-04, EP-05, EP-08 |
+| **Guilherme** | Tudo o que o massoterapeuta toca: Alexa, API do massoterapeuta, avisos, identificação e infraestrutura | EP-00, EP-02, EP-06, EP-07, EP-13, EP-14 |
 
-Quem lidera o épico escreve a spec; os tickets podem ter o outro como responsável (a coluna "Responsável" de cada tabela vale). Carga estimada parecida: cerca de 41 dias para a Mariana e 38 para o Guilherme, que fica com a folga porque os tickets G da Alexa (TK-07.07, TK-07.10) são os de maior risco.
+Quem lidera o épico escreve a spec; os tickets podem ter o outro como responsável (a coluna "Responsável" de cada tabela vale). Carga do backend, sem o frontend: cerca de 27 dias para a Mariana e 28 para o Guilherme, que concentra os tickets G da Alexa (TK-07.07, TK-07.10), os de maior risco.
 
 ### Por que assim
 
 - **A cadeia do EP-01 é sequencial** (TK-01.01 → 01.02 → 01.03 → 01.04) e mexe no `schema.prisma` inteiro. Fica com uma pessoa só (Mariana).
 - **Na primeira semana o Guilherme não encosta no código existente:** CI, spikes da Alexa e o formatador de fala (TK-06.01, sem dependência) são arquivos novos ou externos. Os renomes do TK-01.01 e TK-01.02 entram sem conflito.
-- **O massoterapeuta é o usuário principal.** A mesma pessoa cuida da Alexa, da API que a alimenta (EP-06), dos avisos (TK-05.01), da base acessível do frontend (EP-09) e da tela dele (EP-11). Uma pessoa só decide como ele ouve e lê a informação.
+- **O massoterapeuta é o usuário principal.** A mesma pessoa cuida da Alexa, da API que a alimenta (EP-06) e dos avisos (TK-05.01), e também da tela dele no frontend. Uma pessoa só decide como ele ouve e lê a informação.
 
 ### Ordem sugerida
 
@@ -134,7 +131,7 @@ Quem lidera o épico escreve a spec; os tickets podem ter o outro como responsá
 4. TK-04.03 → TK-04.04 → TK-04.08 → TK-04.05 → TK-03.04
 5. TK-05.02 (espera o TK-05.01 do Guilherme) → TK-05.03 → TK-05.04
 6. TK-03.02 → TK-03.07 → TK-08.03
-7. Frontend: EP-10 e EP-12, assim que o TK-09.02 do Guilherme entrar
+7. Pedidos do frontend: TK-04.10 → TK-03.10 → TK-04.09 (desbloqueiam o TK-10.02 e o TK-10.04)
 
 **Guilherme**
 
@@ -143,9 +140,8 @@ Quem lidera o épico escreve a spec; os tickets podem ter o outro como responsá
 3. ~~TK-02.01 → TK-02.02 (depois do TK-01.01 da Mariana)~~ ✅ 2026-10-20, com o TK-02.03
 4. TK-01.05 (depois do TK-01.02 da Mariana) → TK-07.02 → TK-07.03 → TK-03.08 → TK-07.05 → TK-07.08
 5. TK-05.01 (depois do TK-01.04 da Mariana) → TK-03.01
-6. TK-06.02 (depois do TK-04.02 da Mariana) → TK-07.06 → TK-06.05 (depois do TK-05.03 da Mariana)
-7. Frontend: EP-09 → EP-11, TK-12.01, TK-12.06
-8. TK-13.03 e TK-13.04 assim que a D-09 for decidida
+6. TK-06.02 (depois do TK-04.02 da Mariana) → TK-07.06 → TK-06.03 → TK-06.06, TK-06.05 e TK-06.07 (depois do TK-03.06)
+7. TK-07.09 (spike do lembrete) o quanto antes, num Echo real; depois TK-13.03 e TK-13.04 (D-09 decidida em 2026-10-23)
 
 ### Regras de convivência
 
@@ -153,6 +149,7 @@ Quem lidera o épico escreve a spec; os tickets podem ter o outro como responsá
 - **Rebase logo após os renomes.** Quando o TK-01.01 ou o TK-01.02 entrar, o outro faz rebase no mesmo dia.
 - **Arquivos compartilhados** (`notifications/messages.ts`, `app.module.ts`, este roadmap): cada um acrescenta no fim ou na sua seção; conflito aqui se resolve no rebase, sem conversa.
 - **Contratos entre as trilhas** são combinados na spec, antes do código: nome e payload dos eventos (`appointment.booked`, `appointment.cancelled`, `employee.checked-in`), interface do `NotificationChannel` e o que o `AppointmentsService` exporta. A spec do EP-04 e do EP-05 (Mariana) é revisada pelo Guilherme; a do EP-06 e do EP-07 (Guilherme), pela Mariana.
+- **Contrato com o frontend.** Mudança em rota, DTO ou mensagem usada pelo frontend avisa no PR e atualiza junto o esquema Zod do frontend (`frontend/src/shared/api/schemas.ts`), no mesmo PR quando possível. Pedido de rota nova vindo do frontend entra como ticket neste roadmap.
 - **Revisão cruzada.** Todo PR é revisado pela outra pessoa. Prioridade de revisão: TK-01.04 (máquina de estados, usada no TK-06.03) e TK-06.01 (formatador, usado nas mensagens de todo o sistema).
 - **Decisões pendentes** têm quem cobra (coluna "Quem cobra"). A D-04 e a D-05 travam as duas trilhas: feche primeiro.
 
@@ -165,21 +162,22 @@ Cada linha bloqueia os tickets indicados. Ao decidir, registre no `requisitos.md
 | D-01 | Valores das regras RN-01 a RN-11 | Nada para codar (são parâmetros); precisa estar validado antes da demo | Validar com o RH na EP-14 | Mariana |
 | ~~D-02~~ | ~~Como facilitar a montagem da agenda diária (RF-26)~~ Decidido em 2026-10-20: copiar agenda de um dia modelo para um conjunto de datas futuras (`POST /schedules/copy`) com registros concretos (spec do EP-03) | TK-03.05 | — | Mariana |
 | ~~D-03~~ | ~~Reagendamento (RF-08) entra no MVP?~~ Decidido em 2026-10-20: fora do MVP; cancelar a sessão e reservar novamente | TK-04.07 | — | Mariana |
-| ~~D-04~~ | ~~Bloqueio sobre um período com atendimentos já marcados: recusa, ou cancela e avisa?~~ Decidido em 2026-10-20: recusar com 409 e listar os atendimentos conflitantes (ação consciente, spec do EP-03) | TK-03.06, TK-06.03, TK-07.07 | — | Guilherme |
-| D-05 | A antecedência mínima de cancelamento (RN-01) vale para o massoterapeuta? | TK-06.03 | Não vale: ele pode cancelar a qualquer momento, e o colaborador é avisado | Guilherme |
+| ~~D-04~~ | ~~Bloqueio sobre um período com atendimentos já marcados: recusa, ou cancela e avisa?~~ Decidido em 2026-10-20: recusar com 409 e listar os atendimentos conflitantes (ação consciente, spec do EP-03) | TK-03.06, TK-06.07, TK-07.07 | — | Guilherme |
+| ~~D-05~~ | ~~A antecedência mínima de cancelamento (RN-01) vale para o massoterapeuta?~~ Decidido em 2026-10-22: não vale; ele cancela a qualquer momento e o colaborador é avisado | TK-06.06 | — | Guilherme |
 | ~~D-06~~ | ~~Sessão em `chegou` que o massoterapeuta nunca iniciou: o que acontece no horário de término?~~ Decidido em 2026-10-20: concluir automaticamente como `COMPLETED`, seguindo a RN-16 | TK-05.05 | — | Mariana |
-| D-07 | Como a tela do massoterapeuta recebe avisos em tempo real (RF-31): consulta periódica ou SSE | TK-06.04, TK-11.03 | Consulta periódica no protótipo | Guilherme |
+| ~~D-07~~ | ~~Como a tela do massoterapeuta recebe avisos em tempo real (RF-31): consulta periódica ou SSE~~ Decidido em 2026-10-26: consulta periódica no protótipo; `GET /notifications` com `since`, `spokenText` e marcação como lido (TK-06.04) | TK-06.04 | — | Guilherme |
 | ~~D-08~~ | ~~Quais KPIs o RH quer (RF-21)~~ Decidido em 2026-10-21: turnos manhã/tarde, volume nos sete dias da semana, horários de início mais procurados e taxa/número absoluto de cancelamentos agrupados pela data do atendimento; remarcação fica fora do MVP até haver vínculo explícito | TK-08.01 | `docs/requisitos.md`, seção KPIs do RF-21 | Mariana |
-| D-09 | Hospedagem com HTTPS público (obrigatória para a Alexa fora do túnel de desenvolvimento) | TK-13.03, TK-13.04 | [PREENCHER] | Guilherme |
-| D-10 | Biblioteca de UI: shadcn/ui (Radix) ou React Aria | TK-09.01 | React Aria, se a acessibilidade for o critério principal | Guilherme |
+| ~~D-09~~ | ~~Hospedagem com HTTPS público (obrigatória para a Alexa fora do túnel de desenvolvimento)~~ Decidido em 2026-10-23: backend e PostgreSQL em contêiner sempre ligado com o `Dockerfile` (Render, Railway ou Fly.io, escolhido no TK-13.03). Backend na Vercel descartado: jobs de minuto em minuto e o limite de 8 s da Alexa. O frontend vai para a Vercel (roadmap do frontend) | TK-13.03, TK-13.04 | — | Guilherme |
 | ~~D-12~~ | ~~Como o frontend escolhe o usuário no protótipo, sem login~~ Decidido em 2026-10-20: tela "Entrar como…" alimentada por `GET /auth/demo-users`, só com `AUTH_MODE=header` (spec do EP-02) | TK-02.03 | — | Guilherme |
-| ~~D-13~~ | ~~Como o colaborador fica sabendo de uma vaga da lista de espera, sem e-mail~~ Decidido em 2026-10-20: aviso dentro do sistema por card na página inicial, usando notificação com prazo configurável | TK-04.06 | — | Mariana |
+| ~~D-13~~ | ~~Como o colaborador fica sabendo de uma vaga sem e-mail~~ Decidido em 2026-11-03: notificacao interna associada a entrada da fila; texto inclui unidade e terapeuta, com acoes aceitar/recusar em Suas sessoes. | TK-04.06, TK-04.09 | — | Mariana |
 | D-14 | Prioridades em branco ([M/S/C/W]): RF-04, RF-06, RF-09, RF-12 a RF-16, RF-22, RF-23, RF-26, RF-27, RF-31, RF-33 | Ordem e corte de escopo | Definir antes de M2 | Mariana |
-| D-15 | A Reminders API funciona com lembrete criado pelo backend? (RF-16) | TK-07.10 | Resposta vem do spike TK-07.09 | Guilherme |
-| D-16 | O lembrete falado diz o nome do colaborador? | TK-07.10 | Sem nome (privacidade) | Guilherme |
-| D-17 | Frontend no mesmo repositório (`frontend/`) ou em outro | TK-09.01 | Mesmo repositório, pasta `frontend/` | Guilherme |
+| ~~D-15~~ | ~~A Reminders API funciona com lembrete criado pelo backend? (RF-16)~~ Decidido em 2026-10-22: não; a API só cria lembrete durante uma conversa. A Alexa cria os lembretes do dia quando o massoterapeuta conversa com ela, e o cancelamento apaga fora da conversa (spec do EP-07; o TK-07.09 confirma no aparelho) | TK-07.10 | — | Guilherme |
+| ~~D-16~~ | ~~O lembrete falado diz o nome do colaborador?~~ Decidido em 2026-10-22: sem nome (privacidade) | TK-07.10 | — | Guilherme |
 | ~~D-18~~ | ~~Formato (quantos dígitos) e validade do código de pareamento da Alexa; validade como parâmetro editável pelo RH ou constante técnica (vinda do EP-01, spec do EP-03)~~ Decidido em 2026-10-22: 6 dígitos numéricos, 60 minutos, constante técnica; um código ativo por massoterapeuta | TK-03.08 | — | Guilherme |
-| D-19 | Uma Alexa serve a vários massoterapeutas (RN-17, decidido em 2026-10-22). Como ela sabe quem está falando: pela agenda da sala no momento, por novo pareamento a cada troca, ou outro meio? Afeta o modelo `AlexaDevice` (hoje com um único `therapist_id` por aparelho, TK-01.05) | TK-07.05, TK-07.03 | [PREENCHER] | Guilherme |
+| D-20 | Há limite de massoterapeutas atendendo ao mesmo tempo na mesma sala (capacidade da sala)? | TK-03.09 | Sem limite no MVP: o RH monta a agenda | Mariana |
+| ~~D-19~~ | ~~Uma Alexa serve a vários massoterapeutas (RN-17). Como ela sabe quem está falando?~~ Decidido em 2026-10-22: o aparelho guarda vários massoterapeutas vinculados; a Alexa deduz quem fala (um único vinculado, ou só um com `ScheduleSlot` naquele momento) e, se não der, pergunta o nome, válido até o fim da conversa. Pede migração em `AlexaDevice` (spec do EP-07) | TK-07.05, TK-07.03 | — | Guilherme |
+
+Decisões do frontend (D-10, D-17 e D-21 a D-28) ficam em `frontend/docs/roadmap.md`; as já decididas estão registradas no `docs/requisitos.md`.
 
 ## Épicos e tickets
 
@@ -230,12 +228,12 @@ Cada linha bloqueia os tickets indicados. Ao decidir, registre no `requisitos.md
 
 ### EP-03 — Cadastros do RH (BE)
 
-**Lidera:** Mariana
+**Lidera:** Mariana (spec). Os tickets restantes (TK-03.05, TK-03.06, TK-03.09) passaram para o Guilherme em 2026-10-23.
 
 **Spec:** `docs/specs/EP-03-cadastros-do-rh.md` (Mariana, 2026-10-20). Tickets em `docs/tickets/EP-03/`. Os tickets TK-03.01, 03.02, 03.04, 03.07 e 03.08 foram alinhados à spec em 2026-10-21 e trazem, em "Comentários", as propostas que ainda não estão nela (a confirmar com a Mariana).
 
 **A spec deve cobrir:**
-- validações: a agenda respeita a RN-08 e não pode ter períodos sobrepostos para o mesmo massoterapeuta ou a mesma sala;
+- validações: a agenda respeita a RN-08 e não pode ter períodos sobrepostos para o mesmo massoterapeuta (a mesma sala pode, desde 2026-10-23: TK-03.09);
 - auditoria de toda alteração;
 - regeneração do QR Code da sala, que invalida o código antigo.
 
@@ -245,10 +243,12 @@ Cada linha bloqueia os tickets indicados. Ao decidir, registre no `requisitos.md
 | TK-03.02 | Módulo `rooms/`: listar e criar salas; token de check-in regenerável | RF-24 | TK-02.01 | M | Mariana | ✅ |
 | TK-03.03 | Módulo `schedules/`: criar, listar, editar e remover períodos da agenda diária (data, horário, sala) | RF-25, RN-05, RN-08 | TK-01.02 | M | Mariana | ✅ |
 | TK-03.04 | Remover ou alterar um período da agenda que já tem atendimentos marcados: recusar e informar quais | RF-25 | TK-03.03 | P | Mariana | ✅ |
-| TK-03.05 | Facilitar a montagem da agenda (por exemplo, copiar um dia para um intervalo de datas) | RF-26 | TK-03.03 | M | Mariana | ⬜ |
-| TK-03.06 | Bloqueios de horário pelo RH | RF-23 | TK-03.03 | P | Mariana | ⬜ |
+| TK-03.05 | Facilitar a montagem da agenda (por exemplo, copiar um dia para um intervalo de datas) | RF-26 | TK-03.03 | M | Guilherme | ✅ |
+| TK-03.06 | Bloqueios de horário pelo RH; cria o service de regras de bloqueio do `schedule-blocks/`, reaproveitado pelo TK-06.07 | RF-23 | TK-03.03 | P | Guilherme | ✅ |
 | TK-03.07 | Editar os parâmetros de negócio, com validação de consistência e auditoria | RF-27 | TK-01.06 | M | Mariana | ✅ |
 | TK-03.08 | Gerar código de pareamento da Alexa para um massoterapeuta | RF-17 | TK-01.05 | P | Guilherme | ✅ |
+| TK-03.09 | RN-12 revisada (2026-10-23): permitir vários massoterapeutas ao mesmo tempo na mesma sala; tirar a restrição de sobreposição por sala dos atendimentos (`appointments_room_no_overlap`) e dos períodos da agenda, mantendo a do massoterapeuta | RN-12 | TK-03.03, TK-01.03 | P | Guilherme | 🔒 D-20 |
+| TK-03.10 | **Pedido do frontend (2026-10-27):** rota de unidades para o colaborador (código, nome e fuso das unidades ativas), para o filtro de unidade não depender dos horários devolvidos | RF-01 | TK-03.02 | P | Mariana | ✅ |
 
 ### EP-04 — Agendamento do colaborador (BE)
 
@@ -267,9 +267,12 @@ Cada linha bloqueia os tickets indicados. Ao decidir, registre no `requisitos.md
 | TK-04.03 | Cancelar pelo colaborador e emitir `appointment.cancelled` | RF-03, RN-01 | TK-04.02 | P | Mariana | ✅ |
 | TK-04.04 | Meus agendamentos (próximos e anteriores) | RF-07 | TK-04.02 | P | Mariana | ✅ |
 | TK-04.05 | Próxima sessão para o card de lembrete da página inicial | RF-09 | TK-04.04 | P | Mariana | ✅ |
-| TK-04.06 | Lista de espera: entrar, sair, oferta da vaga ao primeiro da fila ao receber `appointment.cancelled`, aceitar dentro do prazo, job que expira a oferta e passa ao próximo | RF-04, RN-10 | TK-04.03 | G | Mariana | ✅ |
+| TK-04.06 | Lista de espera: entrar em periodos ocupados por agendamento com terapeuta/unidade, sair, aceitar, recusar oferta e avancar fila; expirar e oferecer ao proximo | RF-04, RN-10 | TK-04.03 | G | Mariana | ✅ |
 | TK-04.07 | Reagendar sessão | RF-08 | TK-04.03 | M | Mariana | ✅ |
 | TK-04.08 | Listener de auditoria para todos os eventos de agendamento | — | TK-04.03 | P | Mariana | ✅ |
+| TK-04.09 | **Pedido do frontend:** listar entradas proprias com status, prazo e `spokenText`, incluindo terapeuta/unidade e IDs; aviso `WAITLIST_VACANCY` permite aceitar/recusar a entrada | RF-04, RN-10 | TK-04.06 | P | Mariana | ✅ |
+| TK-04.10 | **Pedido do frontend (2026-10-27):** expor ao colaborador a duração vigente da sessão (por exemplo, na resposta de `GET /booking/availability`), para a tela parar de descobrir a duração por tentativa | RF-01, RN-05 | TK-04.01, TK-03.07 | P | Mariana | ✅ |
+| TK-04.11 | Avisar que não vai: o colaborador cancela até o início, mesmo dentro da antecedência mínima (cancelamento tardio, não conta como ausência); avisa o massoterapeuta (MSG-08) e oferece a vaga à fila com prazo até o início | RF-03, RN-01, RF-04, RN-10 | TK-04.03, TK-04.06 | M | [PREENCHER] | ⬜ |
 
 ### EP-05 — Presença e jobs (BE)
 
@@ -292,6 +295,10 @@ Cada linha bloqueia os tickets indicados. Ao decidir, registre no `requisitos.md
 
 **Lidera:** Guilherme
 
+**Spec:** `docs/specs/EP-06-api-do-massoterapeuta.md` (Guilherme, 2026-10-23), com as decisões da sessão de perguntas do mesmo dia.
+
+**Pendência:** migrar os eventos de `Appointment` da classe `AppointmentEvents` para o `@nestjs/event-emitter`, como prevê o `AGENTS.md`. Fica para quando surgir um terceiro tipo de listener; o EP-06 continua na `AppointmentEvents`.
+
 **A spec deve cobrir:**
 - `spokenText` em toda resposta;
 - horários "às 14h" no fuso `America/Sao_Paulo`;
@@ -303,11 +310,13 @@ Os mesmos services atendem a tela e a Alexa.
 
 | Ticket | Descrição | Requisitos | Depende de | Tam. | Responsável | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| TK-06.01 | Formatador de fala pt-BR, usado pela tela e pela Alexa: horários por extenso, primeiro nome, frases curtas. Testes de formato, tamanho e ordem | RNF-01, RNF-04, RNF-05 | — | M | Guilherme | ⬜ |
-| TK-06.02 | Agenda: atendimento atual, próximo e dia inteiro, com `spokenText` e "hoje" calculado em `America/Sao_Paulo` | RF-30, RF-10, RF-11, RF-15, RN-14 | TK-06.01, TK-04.02 | M | Guilherme | 🟡 |
-| TK-06.03 | Ações: iniciar (inclusive sem check-in), finalizar, cancelar, bloquear horário, com texto de confirmação do resultado | RF-32, RF-14, RN-13 | TK-06.02 | M | Guilherme | 🔒 D-04, D-05 |
-| TK-06.04 | Feed de avisos para a tela (`aria-live`) | RF-31 | TK-05.01 | P | Guilherme | 🔒 D-07 |
-| TK-06.05 | Marcar ausência: `POSSIBLE_NO_SHOW` → `NO_SHOW` | RF-33 | TK-05.03 | P | Guilherme | ⬜ |
+| TK-06.01 | Formatador de fala pt-BR, usado pela tela e pela Alexa: horários por extenso, primeiro nome, frases curtas. Testes de formato, tamanho e ordem | RNF-01, RNF-04, RNF-05 | — | M | Guilherme | ✅ |
+| TK-06.02 | Agenda: atendimento atual, próximo e dia inteiro, com `spokenText` e "hoje" calculado em `America/Sao_Paulo` | RF-30, RF-10, RF-11, RF-15, RN-14 | TK-06.01, TK-04.02 | M | Guilherme | ✅ |
+| TK-06.03 | Ações: iniciar (inclusive sem check-in e sem ID) e finalizar sessão, com o texto do resultado; cria o `TherapistActionsService` | RF-32, RF-14, RN-12, RN-13 | TK-06.02 | M | Guilherme | ✅ |
+| TK-06.04 | Feed de avisos para a tela (`aria-live`) | RF-31 | TK-05.01 | P | Guilherme | ✅ |
+| TK-06.05 | Marcar ausência: `POSSIBLE_NO_SHOW` → `NO_SHOW` | RF-33 | TK-05.03, TK-06.03 | P | Guilherme | ✅ |
+| TK-06.06 | Cancelar pelo massoterapeuta a qualquer momento (D-05): aviso ao colaborador (MSG-07), sem oferta à lista de espera, evento de cancelamento corrigido | RF-12, RF-32, RN-13 | TK-06.03 | M | Guilherme | ✅ |
+| TK-06.07 | Bloquear horário pelo massoterapeuta, com prévia e as regras do TK-03.06 (D-04) | RF-13, RF-32, RN-08 | TK-06.03, TK-03.06 | P | Guilherme | ✅ |
 
 ### EP-07 — Alexa (ALX, BE)
 
@@ -321,16 +330,16 @@ Os mesmos services atendem a tela e a Alexa.
 
 | Ticket | Descrição | Requisitos | Depende de | Tam. | Responsável | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| TK-07.01 | **Spike:** conta de desenvolvedor, skill em pt-BR, endpoint local via túnel HTTPS, "olá" de ponta a ponta num Echo real | — | — | M | Guilherme | ⬜ (comece já) |
-| TK-07.02 | `AlexaSignatureGuard`: assinatura, certificado e horário da requisição | RNF-03 | TK-07.01 | M | Guilherme | ⬜ |
-| TK-07.03 | Arquitetura de handlers (`AlexaIntentHandler` com `canHandle`/`handle`); migrar os intents atuais e tirar `new Date()` e o mapa `ALEXA_USER_MAP` | — | TK-07.02 | M | Guilherme | 🟡 |
-| TK-07.04 | Modelo de interação versionado no repositório e publicação pela ASK CLI | — | TK-07.01 | P | Guilherme | ⬜ |
-| TK-07.05 | Intent de pareamento: "vincular código {código}" | RF-17, RN-17 | TK-03.08, TK-07.03 | M | Guilherme | 🔒 D-19 |
+| TK-07.01 | **Spike:** conta de desenvolvedor, skill em pt-BR, endpoint local via túnel HTTPS, "olá" de ponta a ponta num Echo real | — | — | M | Guilherme | ✅ |
+| TK-07.02 | `AlexaSignatureGuard`: assinatura, certificado e horário da requisição | RNF-03 | TK-07.01 | M | Guilherme | ✅ |
+| TK-07.03 | Arquitetura de handlers (`AlexaIntentHandler` com `canHandle`/`handle`); migrar os intents atuais e tirar `new Date()` (o `ALEXA_USER_MAP` fica até o TK-07.05) | — | TK-07.02 | M | Guilherme | 🟡 |
+| TK-07.04 | Modelo de interação versionado no repositório e publicação pela ASK CLI; mesmo PR do TK-07.03 | — | TK-07.01, TK-07.03 | P | Guilherme | ⬜ |
+| TK-07.05 | Intent de pareamento: "vincular código {código}", vários massoterapeutas por aparelho e identificação de quem fala (D-19); remove o `ALEXA_USER_MAP` | RF-17, RN-17 | TK-03.08, TK-07.03 | M | Guilherme | ✅ |
 | TK-07.06 | Consultas: próximo, agenda do dia, quem chegou | RF-10, RF-11, RF-15, RN-14 | TK-06.02, TK-07.05 | M | Guilherme | 🟡 |
-| TK-07.07 | Ações com confirmação por voz: cancelar e bloquear (por horário falado), iniciar e finalizar sessão | RF-12, RF-13, RF-14 | TK-06.03, TK-07.05 | G | Guilherme | 🔒 D-04, D-05 |
+| TK-07.07 | Ações por voz: cancelar e bloquear (por horário falado, com confirmação), iniciar e finalizar sessão (sem confirmação) | RF-12, RF-13, RF-14 | TK-06.03, TK-06.06, TK-06.07, TK-07.05 | G | Guilherme | ⬜ |
 | TK-07.08 | Ajuda, parar, fallback e "repetir" | RNF-02 | TK-07.03 | P | Guilherme | 🟡 |
-| TK-07.09 | **Spike:** Reminders API criada pelo backend, fora da conversa | RF-16 | TK-07.01 | M | Guilherme | ⬜ (comece cedo) |
-| TK-07.10 | Lembrete falado antes de cada sessão, apagado ou atualizado se a sessão mudar | RF-16, RN-15 | TK-07.09, TK-05.01 | G | Guilherme | 🔒 D-15, D-16 |
+| TK-07.09 | **Spike:** num Echo real, criar lembrete durante a conversa, apagá-lo fora dela e testar a atualização fora dela (D-15) | RF-16 | TK-07.01 | M | Guilherme | ⬜ (o quanto antes) |
+| TK-07.10 | Lembrete falado antes de cada sessão: criado durante a conversa com a Alexa, apagado se a sessão for cancelada | RF-16, RN-15 | TK-07.09, TK-07.05, TK-05.01 | G | Guilherme | ⬜ |
 
 ### EP-08 — KPIs e auditoria (BE)
 
@@ -342,77 +351,19 @@ Os mesmos services atendem a tela e a Alexa.
 | TK-08.02 | Módulo `reports/`: endpoints dos KPIs por período, unidade e massoterapeuta | RF-21 | TK-08.01, TK-04.02 | G | Mariana | ✅ |
 | TK-08.03 | Consulta da auditoria com filtros e paginação | RF-22 | TK-04.08 | M | Mariana | ✅ |
 
-### EP-09 — Base do frontend (FE)
+### EP-09 a EP-12 — Frontend
 
-**Lidera:** Guilherme
-
-**A spec deve cobrir:**
-- o padrão de acessibilidade (RN-04, proposta WCAG 2.2 AA);
-- os testes automáticos de acessibilidade (axe);
-- o roteamento por papel;
-- o tratamento de erros com as mensagens do backend.
-
-| Ticket | Descrição | Requisitos | Depende de | Tam. | Responsável | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| TK-09.01 | Criar a aplicação (React + Vite + TypeScript), biblioteca de UI, lint de acessibilidade (`jsx-a11y`) e testes com axe | RN-04 | — | M | Guilherme | 🔒 D-10, D-17 |
-| TK-09.02 | Cliente da API, identificação do protótipo e roteamento por papel (`GET /me`) | — | TK-09.01, TK-02.02, TK-02.03 | M | Guilherme | 🔒 D-10, D-17 (via TK-09.01) |
-| TK-09.03 | Layout base acessível: landmarks, foco gerenciado, mensagens de erro anunciadas | RNF-01 | TK-09.01 | M | Guilherme | ⬜ |
-
-### EP-10 — Telas do colaborador (FE)
-
-**Lidera:** Mariana
-
-| Ticket | Descrição | Requisitos | Depende de | Tam. | Responsável | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| TK-10.01 | Página inicial com card de lembrete da próxima sessão | RF-09 | TK-09.02, TK-04.05 | P | Mariana | ⬜ |
-| TK-10.02 | Horários disponíveis e reserva, simples e intuitiva | RF-01, RF-02 | TK-09.02, TK-04.02 | G | Mariana | ⬜ |
-| TK-10.03 | Meus agendamentos e cancelamento | RF-07, RF-03 | TK-04.04 | M | Mariana | ⬜ |
-| TK-10.04 | Lista de espera e aviso de vaga | RF-04 | TK-04.06 | M | Mariana | ⬜ |
-| TK-10.05 | Página de check-in aberta pelo QR Code da sala | RF-06 | TK-05.02 | M | Mariana | ⬜ |
-
-### EP-11 — Tela do massoterapeuta (FE)
-
-**Lidera:** Guilherme
-
-**A spec deve cobrir:**
-- as regiões fixas (Agora, Próximo, Agenda de hoje, Ações);
-- agenda em lista, não em grade;
-- `aria-live` para mudanças;
-- confirmação antes de alterar dados;
-- teste com NVDA e TalkBack, e com os próprios massoterapeutas.
-
-| Ticket | Descrição | Requisitos | Depende de | Tam. | Responsável | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| TK-11.01 | Regiões Agora, Próximo e Agenda de hoje | RF-30 | TK-09.03, TK-06.02 | M | Guilherme | ⬜ |
-| TK-11.02 | Ações com confirmação: iniciar, finalizar, cancelar, bloquear, marcar ausência | RF-32, RF-33 | TK-06.03, TK-06.05 | G | Guilherme | 🔒 D-04, D-05 |
-| TK-11.03 | Avisos em tempo real com `aria-live` | RF-31 | TK-06.04 | M | Guilherme | 🔒 D-07 |
-| TK-11.04 | Teste com leitor de tela e sessão de validação com os massoterapeutas | RNF-01 | TK-11.01 a TK-11.03 | M | Guilherme | ⬜ |
-
-### EP-12 — Telas do RH (FE)
-
-**Lidera:** Mariana
-
-| Ticket | Descrição | Requisitos | Depende de | Tam. | Responsável | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| TK-12.01 | Usuários | RF-20 | TK-03.01 | M | Guilherme | ⬜ |
-| TK-12.02 | Unidades e salas, com impressão do QR Code | RF-24 | TK-03.02 | M | Mariana | ⬜ |
-| TK-12.03 | Montagem da agenda diária dos massoterapeutas | RF-25, RF-26 | TK-03.03, TK-03.05 | G | Mariana | ⬜ |
-| TK-12.04 | Bloqueios de horário | RF-23 | TK-03.06 | P | Mariana | ⬜ |
-| TK-12.05 | Parâmetros das regras de negócio | RF-27 | TK-03.07 | M | Mariana | ⬜ |
-| TK-12.06 | Código de pareamento da Alexa | RF-17 | TK-03.08 | P | Guilherme | ⬜ |
-| TK-12.07 | Dashboard de KPIs | RF-21 | TK-08.02 | G | Mariana | ⬜ |
-| TK-12.08 | Auditoria | RF-22 | TK-08.03 | M | Mariana | ⬜ |
+Não ficam neste roadmap. Base do frontend (EP-09), telas do colaborador (EP-10), do massoterapeuta (EP-11) e do RH (EP-12) estão em `frontend/docs/roadmap.md`. Os pedidos do frontend ao backend entram como tickets nos épicos deste arquivo (TK-03.10, TK-04.09, TK-04.10).
 
 ### EP-13 — Infraestrutura e demonstração (INF)
 
-**Lidera:** Guilherme
+**Lidera:** Guilherme. A CI e o deploy do frontend (TK-13.01 e TK-13.06) estão em `frontend/docs/roadmap.md`.
 
 | Ticket | Descrição | Requisitos | Depende de | Tam. | Responsável | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| TK-13.01 | CI do frontend (lint, testes de acessibilidade, build) | RN-04 | TK-09.01 | P | Guilherme | ⬜ |
 | TK-13.02 | Túnel HTTPS para desenvolvimento da Alexa, documentado no `CLAUDE.md` | — | TK-07.01 | P | Guilherme | ⬜ |
-| TK-13.03 | Hospedagem com HTTPS público: backend, banco e frontend | — | — | M | Guilherme | 🔒 D-09 |
-| TK-13.04 | Deploy automático a cada merge | — | TK-13.03, TK-00.05 | M | Guilherme | 🔒 D-09 |
+| TK-13.03 | Hospedagem com HTTPS público do backend e do PostgreSQL em contêiner sempre ligado (escolher Render, Railway ou Fly.io), com CORS liberando só a origem do frontend publicado | — | — | M | Guilherme | ⬜ |
+| TK-13.04 | Deploy automático do backend a cada merge, com as migrações aplicadas | — | TK-13.03, TK-00.05 | M | Guilherme | ⬜ |
 | TK-13.05 | Script de dados de demonstração e roteiro da demo, com plano B se a Alexa falhar ao vivo | — | TK-01.07 | P | Mariana | ⬜ |
 
 ### EP-14 — Produto e validação (PRD)
@@ -423,9 +374,26 @@ Os mesmos services atendem a tela e a Alexa.
 | --- | --- | --- | --- | --- | --- | --- |
 | TK-14.01 | Preencher o perfil do massoterapeuta com as entrevistas (tabela do `requisitos.md`) | — | — | P | Guilherme | ⬜ |
 | TK-14.02 | Validar os valores das regras RN-01 a RN-11 com o RH | D-01 | — | P | Mariana | ⬜ |
-| TK-14.03 | Validar as frases da Alexa e as respostas com os massoterapeutas | RNF-02 | TK-07.01 | M | Guilherme | ⬜ |
+| TK-14.03 | Validar as frases da Alexa e os `spokenText` da API com os massoterapeutas | RNF-02 | TK-07.01 | M | Guilherme | ⬜ |
 | TK-14.04 | Definir prioridades MoSCoW em branco | D-14 | — | P | Mariana | ⬜ |
-| TK-14.05 | Teste de usabilidade: um dia simulado sem pedir informação a ninguém (métrica principal) | Métricas de sucesso | M3 | M | Guilherme | ⬜ |
+| TK-14.05 | Teste de usabilidade: um dia simulado sem pedir informação a ninguém (métrica principal), com a Alexa e a tela do massoterapeuta | Métricas de sucesso | M3 (inclui o TK-11.04 do frontend) | M | Guilherme | ⬜ |
+
+### EP-16 — Pesquisa de satisfação (BE)
+
+**Lidera:** Mariana · **Spec:** `docs/specs/EP-16-pesquisa-de-satisfacao.md`
+
+| Ticket | Descrição | Requisitos | Depende de | Tam. | Responsável | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| TK-16.01 | Persistir respostas anônimas e validar envio, sem vínculo a colaborador/sessão nem deduplicação | RF-34, RN-18 | — | M | Mariana | ✅ |
+| TK-16.02 | Relatório para RH com distribuições, médias e comentários sem metadados de identidade/sessão | RF-34, RN-18 | TK-16.01 | M | Mariana | ✅ |
+## Tickets de backend do EP-15 — Assistente informativo com RAG
+
+A definição do épico e os tickets de frontend estão em [EP-15 no roadmap do frontend](../../frontend/docs/roadmap.md#ep-15--assistente-informativo-com-rag-be--fe). A prioridade do RF-34 permanece em aberto.
+
+| Ticket | Descrição | Requisitos | Depende de | Tam. | Responsável | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| TK-15.01 | Serviço Python RAG: indexar documentos oficiais, recuperar trechos, responder sem inventar informações e expor saúde do índice | RF-34, RNF-04 | — | G | Guilherme | ✅ |
+| TK-15.02 | API NestJS `POST /api/chat/messages`: validar pergunta, encaminhar ao serviço RAG, devolver resposta/fontes/sugestões e tratar indisponibilidade | RF-34, RNF-04 | TK-15.01 | M | Guilherme | ✅ |
 
 ## Fora do MVP (não iniciar sem pedido explícito)
 
@@ -433,7 +401,6 @@ Os mesmos services atendem a tela e a Alexa.
 | --- | --- | --- |
 | Login com Google (Workspace) | — | Só se der tempo. O backend já tem um modo `AUTH_MODE=google` parcial |
 | Lembrete por e-mail com confirmação de presença | RF-05, RN-03, RN-11 | Ativa a reserva `BOOKED` e a liberação automática de quem não confirma |
-| Push da PWA (Web Push) | — | Avisos ao massoterapeuta com a tela fechada |
-| Avaliação da sessão (feedback) | — | Entrada no MVP ainda em aberto |
+| Web Push (lado do backend) | — | Inscrições por aparelho e envio dos avisos ao massoterapeuta com a tela fechada; a parte da tela está no roadmap do frontend |
 | Google Calendar | — | Sem dado de saúde no evento |
 | Campainha virtual da Alexa | — | Anúncio de chegada em tempo real |

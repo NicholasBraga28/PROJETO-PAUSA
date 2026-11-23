@@ -12,4 +12,9 @@ export class ReportsController {
   getKpis(@Query() query: QueryKpisDto) {
     return this.reports.getKpis(query);
   }
+
+  @Get("feedback")
+  getFeedback() {
+    return this.reports.getFeedback();
+  }
 }

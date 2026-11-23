@@ -1,0 +1,30 @@
+@import "./fonts.css";
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Open Sans Variable", "Open Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+
+:root {
+  --background: #000000;
+  --foreground: #ffffff;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: var(--nav-clearance);
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background-color: var(--canvas, var(--background));
+  color: var(--ink, var(--foreground));
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}

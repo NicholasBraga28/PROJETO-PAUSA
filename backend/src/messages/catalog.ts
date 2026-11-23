@@ -1,4 +1,7 @@
 export const messages = {
+  feedback: {
+    submitted: "Obrigado por compartilhar sua experiência.",
+  },
   errors: {
     notIdentified: "Você ainda não se identificou: escolha um usuário na tela de entrada.",
     identificationNotRecognized:
@@ -37,9 +40,29 @@ export const messages = {
     scheduleConflictRoom: "A sala selecionada já está ocupada por outro período neste mesmo horário.",
     scheduleHasAppointments:
       "Não é possível alterar ou remover este período pois já existem atendimentos agendados nele.",
+    scheduleCopyEmptySource: "Não há períodos na data de origem para copiar: escolha outra data.",
+    scheduleCopyInvalidTargets:
+      "As datas de destino precisam ser futuras, diferentes da data de origem e sem repetição.",
+    scheduleBlockInPast: "O início do bloqueio já passou: escolha um horário a partir de agora.",
+    scheduleBlockSpansDays: "O bloqueio precisa começar e terminar no mesmo dia: crie um bloqueio para cada dia.",
+    scheduleBlockOutsideOperatingHours: "O bloqueio precisa ficar num dia útil, dentro do horário de funcionamento.",
+    scheduleAlreadyBlocked: "Esse período já está bloqueado.",
+    scheduleBlockHasAppointments: (count: string, atTime: string, isSingle: boolean) =>
+      isSingle
+        ? `Há ${count} nesse período, ${atTime}. Cancele-o antes de bloquear.`
+        : `Há ${count} nesse período, o primeiro ${atTime}. Cancele-os antes de bloquear.`,
     therapistProfileNotFound: "Perfil de massoterapeuta não encontrado.",
-    sessionCannotStart: "A sessão não pode ser iniciada.",
-    sessionNotInProgress: "A sessão não está em andamento.",
+    therapistProfileUnavailable: "Seu usuário não tem um perfil de massoterapeuta ativo: procure o RH.",
+    invalidAgendaDate: "A data da agenda é inválida: informe o dia no formato ano-mês-dia.",
+    invalidNotificationsSince: "O instante dos avisos é inválido: informe a data e a hora completas.",
+    notificationNotFound: "Aviso não encontrado.",
+    sessionNotOpenYet: "Este atendimento ainda não pode ser iniciado.",
+    sessionTimeOver: "O horário deste atendimento já terminou.",
+    anotherSessionInProgress: (firstName: string) => `Finalize a sessão com ${firstName} antes de iniciar outra.`,
+    noAppointmentToStart: "Não há atendimento para iniciar agora.",
+    noSessionInProgress: "Nenhuma sessão em andamento.",
+    stillWithinLateTolerance: "Ainda está dentro da tolerância de atraso.",
+    appointmentChangedMeanwhile: "Este atendimento acabou de mudar: consulte a agenda e tente de novo.",
     invalidStatusTransition:
       "Esta ação não está disponível para este atendimento agora. Consulte a agenda para ver a situação dele.",
     waitlistEntryNotFound: "Entrada da lista de espera não encontrada.",
@@ -150,6 +173,9 @@ export const messages = {
     summary: (count: number, firstName: string, hour: string) =>
       `Há ${count} ${count === 1 ? "horário disponível" : "horários disponíveis"}. Primeiro: ${firstName}, às ${hour}.`,
   },
+  chat: {
+    unavailable: "O assistente está temporariamente indisponível. Tente novamente em instantes.",
+  },
   reports: {
     shiftNames: { MORNING: "manhã", AFTERNOON: "tarde" },
     weekdayNames: {
@@ -180,6 +206,7 @@ export const messages = {
       sessionStarted: "Sessão iniciada",
       sessionFinished: "Sessão finalizada",
       sessionAutoCompleted: "Sessão finalizada automaticamente",
+      appointmentMarkedNoShow: "Ausência registrada pelo massoterapeuta",
     },
     unknownAuditAction: "Evento do agendamento registrado",
     auditEvent: (action: string, dateTime: string, isSystem: boolean) =>
@@ -207,14 +234,135 @@ export const messages = {
     empty: "Você não tem próxima sessão agendada.",
   },
   waitlist: {
-    offer: (dateTime: string) =>
-      `Uma vaga ficou disponível para você em ${dateTime}. Acesse a página inicial para aceitar ou recusar.`,
+    listSummary: (count: number) =>
+      count === 0
+        ? "Você não tem entradas na lista de espera."
+        : `Você tem ${count} ${count === 1 ? "entrada" : "entradas"} na lista de espera.`,
+    waiting: (dateTime: string) => `Você está na lista de espera para ${dateTime}.`,
+    offer: (dateTime: string, expiresAt: string, therapistName: string, locationName: string) =>
+      `Uma vaga ficou disponível para você em ${dateTime}, com ${therapistName}, na unidade ${locationName}. A oferta expira em ${expiresAt}. Acesse Suas sessões para aceitar ou recusar.`,
+    converted: (dateTime: string) => `A vaga para ${dateTime} foi confirmada como agendamento.`,
+    expired: (dateTime: string) => `A oferta para ${dateTime} expirou.`,
+    cancelled: (dateTime: string) => `Sua entrada na lista de espera para ${dateTime} foi cancelada.`,
+    declined: (dateTime: string) => `Você recusou a oferta para ${dateTime}.`,
+  },
+  speech: {
+    clockTime: (hour: number, minute: string) => `${hour}h${minute}`,
+    atTime: (clockTime: string, isSingularHour: boolean) => `${isSingularHour ? "à" : "às"} ${clockTime}`,
+    fromTime: (clockTime: string, isSingularHour: boolean) => `${isSingularHour ? "da" : "das"} ${clockTime}`,
+    interval: (fromTime: string, atTime: string) => `${fromTime} ${atTime}`,
+    tomorrow: "amanhã",
+    onWeekdays: [
+      "na segunda-feira",
+      "na terça-feira",
+      "na quarta-feira",
+      "na quinta-feira",
+      "na sexta-feira",
+      "no sábado",
+      "no domingo",
+    ],
+    months: [
+      "janeiro",
+      "fevereiro",
+      "março",
+      "abril",
+      "maio",
+      "junho",
+      "julho",
+      "agosto",
+      "setembro",
+      "outubro",
+      "novembro",
+      "dezembro",
+    ],
+    dayOfMonth: (day: number, isFirstDay: boolean) => (isFirstDay ? `${day}º` : String(day)),
+    calendarDate: (dayOfMonth: string, month: string) => `${dayOfMonth} de ${month}`,
+    otherDay: (onWeekday: string, dayOfMonth: string, month: string) => `${onWeekday}, ${dayOfMonth} de ${month}`,
+    tomorrowAt: (tomorrow: string, atTime: string) => `${tomorrow} ${atTime}`,
+    otherDayAt: (otherDay: string, atTime: string) => `${otherDay}, ${atTime}`,
+    sentenceEnd: ".",
+    count: (count: number, noun: string) => `${count} ${noun}`,
+    nouns: {
+      appointment: { singular: "atendimento", plural: "atendimentos" },
+      person: { singular: "pessoa", plural: "pessoas" },
+      notification: { singular: "aviso", plural: "avisos" },
+    },
+    appointmentStatuses: {
+      BOOKED: "reservado",
+      CONFIRMED: "confirmado",
+      CHECKED_IN: "chegou",
+      POSSIBLE_NO_SHOW: "possível ausência",
+      IN_PROGRESS: "em andamento",
+      COMPLETED: "concluído",
+      NO_SHOW: "ausente",
+    },
+  },
+  therapistAgenda: {
+    current: (firstName: string, endTime: string) => `Agora: ${firstName}, até ${endTime}`,
+    next: (firstName: string, atTime: string) => `Próximo: ${firstName}, ${atTime}`,
+    first: (firstName: string, atTime: string) => `Primeiro: ${firstName}, ${atTime}`,
+    todaySummary: (count: string) => `Hoje, ${count}`,
+    otherDaySummary: (day: string, count: string) => `${day}, ${count}`,
+    otherDayEmpty: (day: string) => `${day}, você não tem atendimentos`,
+    nothingLeftToday: "Você não tem mais atendimentos hoje.",
+    emptyToday: "Você não tem atendimentos hoje.",
+    item: (firstName: string, atTime: string, status: string) => `${firstName}, ${atTime}, ${status}`,
+    cancelConfirmation: (firstName: string, atTime: string) =>
+      `Cancelar o atendimento de ${firstName} ${atTime}. Confirma?`,
+    markNoShowConfirmation: (firstName: string, fromTime: string) =>
+      `Marcar ${firstName} como ausente no atendimento ${fromTime}. Confirma?`,
+    blockConfirmation: (day: string, interval: string) =>
+      day ? `Bloquear ${day}, ${interval}. Confirma?` : `Bloquear ${interval}. Confirma?`,
+    arrived: (firstName: string, atTime: string) => `${firstName} chegou ${atTime}`,
+    arrivalsTotal: (count: string) => `Hoje, ${count} chegaram`,
+    nobodyArrived: "Ninguém chegou ainda.",
+    offerFullAgenda: "Quer que eu fale todos?",
+    agendaEntry: (firstName: string, atTime: string) => `${firstName} ${atTime}`,
+  },
+  therapistActions: {
+    sessionStarted: (firstName: string) => `Sessão com ${firstName} iniciada`,
+    sessionFinished: "Sessão finalizada",
+    noShowMarked: "Ausência registrada",
+    cancelled: "Cancelado",
+    blocked: "Bloqueado",
+  },
+  alexa: {
+    welcome: "Olá. Você pode pedir o próximo atendimento ou a agenda do dia.",
+    whatToSay: "Você pode dizer: próximo atendimento, agenda do dia ou quem chegou.",
+    notUnderstood: "Não entendi. Você pode dizer: próximo atendimento ou agenda do dia.",
+    goodbye: "Até logo.",
+    presentationInvite: "Vamos juntos usá-las para abrir as portas da acessibilidade e bem-estar?",
+    repeatHint: "Para ouvir de novo, diga repetir.",
+    deviceNotPaired: "Este aparelho ainda não está vinculado. Peça ao RH um código de vinculação.",
+    devicePaired: (firstName: string) => `Pronto. Esta Alexa agora atende ${firstName}.`,
+    pairingCodeRejected: "Código inválido ou expirado. Peça um novo código ao RH.",
+    whoIsSpeaking: "Quem está falando?",
+    whoIsSpeakingWithSurname: "Quem está falando? Diga o nome e o sobrenome.",
+    speakerNotLinked: (names: string) => `Esta Alexa atende ${names}. Quem está falando?`,
+    speakersOfDevice: (names: string) => `Esta Alexa atende ${names}.`,
+    nothingChanged: "Tudo bem, nada foi alterado.",
+    fullAgendaDeclined: "Tudo bem.",
+    nothingToConfirm: "Não há nada para confirmar. Você pode dizer: próximo atendimento ou agenda do dia.",
+    appointmentLeftAgenda: "Esse atendimento foi cancelado ou liberado antes da confirmação. Nada foi alterado.",
+    vagueCancelTime: "Diga o horário exato do atendimento, por exemplo: cancelar o atendimento das duas da tarde.",
+    noAppointmentAt: (atTimes: string) => `Não há atendimento ${atTimes} hoje.`,
+    ambiguousTime: (atTimes: string) => `Há atendimentos ${atTimes}. Diga, por exemplo: duas da tarde.`,
+    vagueBlockPeriod: "Diga o horário exato, por exemplo: bloquear das três às quatro da tarde.",
+    blockPeriodRefused:
+      "O bloqueio precisa ser hoje, dentro do horário de funcionamento, com o fim depois do início. " +
+      "Diga, por exemplo: bloquear das três às quatro da tarde.",
+    failure: "Não consegui consultar a agenda agora. Tente de novo em instantes.",
   },
   notifications: {
     checkInConfirmed: (dateTime: string, roomName: string) => `Check-in confirmado para ${dateTime}, na ${roomName}.`,
-    employeeArrived: (firstName: string, hour: string, roomName: string) =>
-      `${firstName} chegou para o atendimento de hoje, às ${hour}, na ${roomName}.`,
-    possibleNoShow: (firstName: string, hour: string, roomName: string) =>
-      `${firstName} ainda não fez check-in para o atendimento de hoje, às ${hour}, na ${roomName}.`,
+    employeeArrived: (firstName: string, atTime: string, roomName: string) =>
+      `${firstName} chegou para o atendimento de hoje, ${atTime}, na ${roomName}.`,
+    possibleNoShow: (firstName: string, atTime: string, roomName: string) =>
+      `${firstName} ainda não fez check-in para o atendimento de hoje, ${atTime}, na ${roomName}.`,
+    cancelledByTherapist: (date: string, atTime: string, therapistFirstName: string) =>
+      `Seu atendimento de ${date}, ${atTime}, com ${therapistFirstName}, foi cancelado pelo massoterapeuta. ` +
+      "Você pode reservar outro horário na página inicial.",
+    feedSummary: (count: string) => `Você tem ${count}`,
+    markedAsRead: "Aviso marcado como lido.",
   },
 } as const;

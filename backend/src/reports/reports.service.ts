@@ -32,6 +32,13 @@ type CancellationPeriod = {
   scheduledAppointmentCount: number;
   cancelledAppointmentCount: number;
 };
+type FeedbackDistributionName = "bookingEase" | "technologySatisfaction" | "serviceRating" | "recommendation";
+type FeedbackDistributionRow = Readonly<{ question: FeedbackDistributionName; value: number; count: number }>;
+type FeedbackSummaryRow = Readonly<{
+  totalResponses: number;
+  recommendationAverage: number | null;
+  comments: string[];
+}>;
 
 const DEFAULT_GRANULARITY: Granularity = "DAY";
 const DEFAULT_TIMEZONE = "America/Sao_Paulo";
@@ -102,6 +109,58 @@ export class ReportsService {
       cancellations,
       spokenText,
     };
+  }
+
+  async getFeedback() {
+    const [summaryRows, distributionRows] = await Promise.all([
+      this.prisma.$queryRaw<FeedbackSummaryRow[]>`
+        SELECT
+          COUNT(*)::int AS "totalResponses",
+          AVG(recommendation_score)::float8 AS "recommendationAverage",
+          COALESCE(
+            ARRAY_AGG(comment ORDER BY comment) FILTER (WHERE comment IS NOT NULL),
+            ARRAY[]::text[]
+          ) AS comments
+        FROM feedback_responses
+      `,
+      this.prisma.$queryRaw<FeedbackDistributionRow[]>`
+        SELECT 'bookingEase' AS question, booking_ease AS value, COUNT(*)::int AS count
+        FROM feedback_responses GROUP BY booking_ease
+        UNION ALL
+        SELECT 'technologySatisfaction' AS question, technology_satisfaction AS value, COUNT(*)::int AS count
+        FROM feedback_responses GROUP BY technology_satisfaction
+        UNION ALL
+        SELECT 'serviceRating' AS question, service_rating AS value, COUNT(*)::int AS count
+        FROM feedback_responses GROUP BY service_rating
+        UNION ALL
+        SELECT 'recommendation' AS question, recommendation_score AS value, COUNT(*)::int AS count
+        FROM feedback_responses GROUP BY recommendation_score
+      `,
+    ]);
+
+    const distributions: Record<FeedbackDistributionName, Array<{ value: number; count: number }>> = {
+      bookingEase: this.emptyDistribution(1, 5),
+      technologySatisfaction: this.emptyDistribution(1, 4),
+      serviceRating: this.emptyDistribution(1, 5),
+      recommendation: this.emptyDistribution(0, 10),
+    };
+
+    for (const row of distributionRows) {
+      const bucket = distributions[row.question].find(({ value }) => value === row.value);
+      if (bucket) bucket.count = row.count;
+    }
+
+    const [summary] = summaryRows;
+    return {
+      totalResponses: summary.totalResponses,
+      ...distributions,
+      recommendationAverage: summary.recommendationAverage,
+      comments: summary.comments,
+    };
+  }
+
+  private emptyDistribution(minimum: number, maximum: number): Array<{ value: number; count: number }> {
+    return Array.from({ length: maximum - minimum + 1 }, (_, index) => ({ value: minimum + index, count: 0 }));
   }
 
   private validateQuery(query: QueryKpisDto): Readonly<{

@@ -68,8 +68,14 @@ describe("Appointment audit listener (e2e)", () => {
   it("TK-04.08 RF-03: audits appointment.cancelled and ignores duplicate event delivery", async () => {
     const appointment = await createAppointment();
 
-    await events.emitCancelled({ appointmentId: appointment.id, employeeId: appointment.employeeId });
-    await events.emitCancelled({ appointmentId: appointment.id, employeeId: appointment.employeeId });
+    const cancelled = {
+      appointmentId: appointment.id,
+      employeeId: appointment.employeeId,
+      cancelledById: appointment.employeeId,
+      cancelledByRole: "EMPLOYEE",
+    } as const;
+    await events.emitCancelled(cancelled);
+    await events.emitCancelled(cancelled);
 
     await expect(
       prisma.auditEvent.count({ where: { entityId: appointment.id, action: "APPOINTMENT_CANCELLED" } }),
@@ -80,7 +86,7 @@ describe("Appointment audit listener (e2e)", () => {
       expect.objectContaining({
         actorId: appointment.employeeId,
         entityType: "Appointment",
-        data: { status: "CANCELLED" },
+        data: { status: "CANCELLED", employeeId: appointment.employeeId, cancelledByRole: "EMPLOYEE" },
       }),
     );
   });

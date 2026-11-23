@@ -223,7 +223,7 @@ Regra da refatoração: ao mexer em um trecho, leve-o para a estrutura, o gloss�
 | Parâmetros de negócio guardados no banco (`business_rules`), ainda sem edição | Editáveis pelo RH, com atualização do cache e auditoria (RF-27, TK-03.07) |
 | `src/messages/catalog.ts` | `notifications/messages.ts` |
 | `new Date()` em `alexa.controller.ts` e no cálculo de "hoje" do terapeuta (usa o fuso do servidor) | `Clock` injetado e dia calculado em `America/Sao_Paulo` (TK-06.02, TK-07.03) |
-| `ALEXA_USER_MAP` e intents que pedem o ID do atendimento | `AlexaDevice` com pareamento (RF-17) e comandos sem identificador |
+| `ALEXA_USER_MAP` e intents que pedem o ID do atendimento | `AlexaDevice` com vários massoterapeutas vinculados por código (RF-17, RN-17, D-19) e comandos sem identificador |
 | Alexa sem verificação de assinatura | `AlexaSignatureGuard` (RNF-03) |
 | `NOTIFICATION_WEBHOOK_URL` | `NotificationChannel` |
 
@@ -237,6 +237,8 @@ O roadmap completo fica em **`docs/roadmap.md`**: marcos, épicos (EP-NN), ticke
 - O EP-00 (Fundação) foi concluído em 2026-10-19, junto com os testes e2e (TK-00.06); a CI (`.github/workflows/backend-ci.yml`: lint, format:check, testes unitários, build e e2e) e a limpeza do `tsbuildinfo` chegaram em 2026-10-21.
 - O marco M1 (Domínio) está concluído: EP-01 em 2026-10-19 e EP-02 em 2026-10-20. Toda rota nova exige identificação por padrão, declara papéis com `@Roles` e entra na matriz de permissões (`test/permissions.e2e-spec.ts`); exceções levam `@Public()`.
 - A spec do EP-03 (Cadastros do RH) está em `docs/specs/EP-03-cadastros-do-rh.md`.
+- A spec do EP-06 (API do massoterapeuta) está em `docs/specs/EP-06-api-do-massoterapeuta.md`: rotas `/therapists/me/*`, formatador de fala, confirmação sem estado no backend (o cliente pergunta) e os services que a Alexa reaproveita.
+- A spec do EP-07 (Alexa) está em `docs/specs/EP-07-alexa.md`, com as limitações da plataforma que moldam as decisões (lembrete só nasce numa conversa, limite de 8 s, nome de invocação "pausa").
 - O Fora do MVP (login Google, e-mail, Web Push, feedback, Google Calendar, campainha virtual) não é iniciado sem pedido explícito.
  
 ## Regras de trabalho
@@ -267,7 +269,7 @@ O massoterapeuta com deficiência visual é o usuário principal. Toda funcional
 - **Erros compreensíveis.** Mensagens de erro ao usuário dizem o que aconteceu e o que fazer, em português, em uma frase. Sem códigos, stack traces ou jargão.
 - **Ações seguras.** Ações que alteram dados do terapeuta (marcar ausência, bloquear horário) exigem confirmação explícita e devolvem um texto confirmando o resultado.
 - **Mudanças viram aviso.** Todo evento que muda a agenda do terapeuta gera notificação pelo `NotificationChannel`; ele nunca precisa procurar a mudança.
-- **Alexa.** Respostas curtas (uma ou duas frases), sem listas longas, sempre com uma saída clara ("Para ouvir de novo, diga repetir").
+- **Alexa.** Respostas curtas (uma ou duas frases), sem listas longas, sempre com uma saída clara ("Para ouvir de novo, diga repetir"). Cancelar e bloquear pedem "sim" por voz; iniciar e finalizar sessão executam direto e dizem o resultado (decisão de 2026-10-22).
 - **Testado.** Textos para leitura e fala têm testes que verificam formato, tamanho e ordem da informação.
 Se uma funcionalidade não puder ser tornada acessível, pare e pergunte antes de implementá-la.
  

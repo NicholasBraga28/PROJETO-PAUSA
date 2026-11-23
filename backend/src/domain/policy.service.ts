@@ -34,6 +34,9 @@ export class PolicyService {
   get slotStepMinutes() {
     return this.currentRules.slotStepMinutes;
   }
+  get sessionDurationMinutes() {
+    return this.currentRules.sessionDurationMinutes;
+  }
 
   isAllowedDuration(minutes: number) {
     return minutes === this.currentRules.sessionDurationMinutes;
@@ -91,15 +94,19 @@ export class PolicyService {
   }
 
   assertScheduleOperatingHours(startsAt: Date, endsAt: Date, timezone: string) {
+    if (!this.isWithinWorkingHours(startsAt, endsAt, timezone)) {
+      throw new BadRequestException(messages.errors.outsideOperatingHours);
+    }
+  }
+
+  isWithinWorkingHours(startsAt: Date, endsAt: Date, timezone: string) {
     const start = localParts(startsAt, timezone);
     const end = localParts(endsAt, timezone);
     const { workDays, workStartMinutes, workEndMinutes } = this.currentRules;
     const sameDay = start.year === end.year && start.month === end.month && start.day === end.day;
     const isWorkDay = workDays.includes(ISO_WEEKDAY_BY_NAME[start.weekday]);
     const withinDay = start.minutes >= workStartMinutes && end.minutes <= workEndMinutes;
-    if (!sameDay || !isWorkDay || !withinDay) {
-      throw new BadRequestException(messages.errors.outsideOperatingHours);
-    }
+    return sameDay && isWorkDay && withinDay;
   }
 }
 

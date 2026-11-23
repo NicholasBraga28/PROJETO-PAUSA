@@ -13,21 +13,23 @@ import { BookingService } from "./booking/booking.service";
 import { BookingController } from "./booking/booking.controller";
 import { AdminService } from "./admin/admin.service";
 import { AdminController } from "./admin/admin.controller";
-import { TherapistService } from "./therapist/therapist.service";
-import { TherapistController } from "./therapist/therapist.controller";
 import { HealthController } from "./health.controller";
-import { AlexaController } from "./alexa/alexa.controller";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { SchedulesModule } from "./schedules/schedules.module";
-import { AppointmentEvents } from "./booking/appointment-events";
+import { AppointmentEventsModule } from "./booking/appointment-events.module";
 import { WaitlistService } from "./waitlist/waitlist.service";
 import { AppointmentAuditListener } from "./audit/appointment-audit.listener";
 import { AttendanceModule } from "./attendance/attendance.module";
 import { ReportsModule } from "./reports/reports.module";
 import { AuditEventsModule } from "./audit/audit-events.module";
+import { TherapistsModule } from "./therapists/therapists.module";
 import { UsersModule } from "./users/users.module";
 import { RoomsModule } from "./rooms/rooms.module";
 import { AlexaModule } from "./alexa/alexa.module";
+import { ScheduleBlocksModule } from "./schedule-blocks/schedule-blocks.module";
+import { LocationsModule } from "./locations/locations.module";
+import { FeedbackModule } from "./feedback/feedback.module";
+import { ChatModule } from "./chat/chat.module";
 
 @Module({
   imports: [
@@ -35,6 +37,7 @@ import { AlexaModule } from "./alexa/alexa.module";
     ClockModule,
     PrismaModule,
     BusinessRulesModule,
+    AppointmentEventsModule,
     AuthModule,
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
@@ -43,20 +46,16 @@ import { AlexaModule } from "./alexa/alexa.module";
     AttendanceModule,
     ReportsModule,
     AuditEventsModule,
+    TherapistsModule,
     UsersModule,
     RoomsModule,
     AlexaModule,
+    ScheduleBlocksModule,
+    LocationsModule,
+    FeedbackModule,
+    ChatModule,
   ],
-  controllers: [HealthController, BookingController, AdminController, TherapistController, AlexaController],
-  providers: [
-    PolicyService,
-    AuditService,
-    BookingService,
-    AppointmentEvents,
-    AppointmentAuditListener,
-    WaitlistService,
-    AdminService,
-    TherapistService,
-  ],
+  controllers: [HealthController, BookingController, AdminController],
+  providers: [PolicyService, AuditService, BookingService, AppointmentAuditListener, WaitlistService, AdminService],
 })
 export class AppModule {}

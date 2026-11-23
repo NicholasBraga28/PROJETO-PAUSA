@@ -1,7 +1,8 @@
-import { IsDateString, IsOptional, IsUUID } from "class-validator";
+import { IsDateString, IsUUID } from "class-validator";
 
 export class JoinWaitlistDto {
-  @IsOptional() @IsUUID() therapistId?: string;
+  @IsUUID() therapistId!: string;
+  @IsUUID() locationId!: string;
   @IsDateString() desiredStartsAt!: string;
   @IsDateString() desiredEndsAt!: string;
 }

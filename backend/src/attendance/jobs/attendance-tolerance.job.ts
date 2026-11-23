@@ -8,6 +8,7 @@ import { firstNameOf } from "../../common/names/first-name";
 import { messages } from "../../messages/catalog";
 import { NOTIFICATION_CHANNEL, NotificationChannel } from "../../notifications/notification-channel";
 import { PrismaService } from "../../prisma/prisma.service";
+import { atTimeOf } from "../../notifications/spoken-text";
 
 type OverdueAppointment = Readonly<{
   id: string;
@@ -65,40 +66,21 @@ export class AttendanceToleranceJob {
         data: { status: "POSSIBLE_NO_SHOW" },
       });
       if (updated.count !== 1) return;
+      const text = messages.notifications.possibleNoShow(
+        firstNameOf(appointment.employee.name),
+        atTimeOf(appointment.startsAt),
+        appointment.room.name,
+      );
       await this.notificationChannel.notify({
         appointmentId: appointment.id,
         recipientId: appointment.therapist.user.id,
         kind: NotificationKind.POSSIBLE_NO_SHOW,
         scheduledFor: now,
-        message: messages.notifications.possibleNoShow(
-          firstNameOf(appointment.employee.name),
-          formatSpokenHour(appointment.startsAt),
-          appointment.room.name,
-        ),
-        spokenText: messages.notifications.possibleNoShow(
-          firstNameOf(appointment.employee.name),
-          formatSpokenHour(appointment.startsAt),
-          appointment.room.name,
-        ),
+        message: text,
+        spokenText: text,
       });
     } catch {
       this.logger.error(`Could not mark possible no-show appointmentId=${appointment.id}`);
     }
   }
-}
-
-function formatSpokenHour(date: Date): string {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("pt-BR", {
-      timeZone: "America/Sao_Paulo",
-      hour: "numeric",
-      minute: "2-digit",
-      hourCycle: "h23",
-    })
-      .formatToParts(date)
-      .filter((part) => part.type !== "literal")
-      .map((part) => [part.type, part.value]),
-  );
-  const minute = parts.minute === "00" ? "" : `:${parts.minute}`;
-  return `${parts.hour}h${minute}`;
 }

@@ -1,0 +1,162 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "pausa",
+      "intents": [
+        {
+          "name": "PairDeviceIntent",
+          "slots": [{ "name": "code", "type": "AMAZON.NUMBER" }],
+          "samples": ["vincular código {code}", "vincular o código {code}"]
+        },
+        {
+          "name": "NextAppointmentIntent",
+          "slots": [{ "name": "name", "type": "TherapistName" }],
+          "samples": [
+            "quem é o próximo",
+            "qual o próximo atendimento",
+            "qual é o meu próximo atendimento",
+            "aqui é {name} quem é o próximo",
+            "aqui é a {name} quem é o próximo",
+            "aqui é o {name} quem é o próximo",
+            "aqui é {name} qual o próximo atendimento"
+          ]
+        },
+        {
+          "name": "TodayAgendaIntent",
+          "slots": [{ "name": "name", "type": "TherapistName" }],
+          "samples": [
+            "qual minha agenda de hoje",
+            "qual é a minha agenda de hoje",
+            "como está minha agenda",
+            "agenda do dia",
+            "aqui é {name} qual minha agenda de hoje",
+            "aqui é a {name} como está minha agenda",
+            "aqui é o {name} como está minha agenda"
+          ]
+        },
+        {
+          "name": "WhoArrivedIntent",
+          "slots": [{ "name": "name", "type": "TherapistName" }],
+          "samples": [
+            "quem chegou",
+            "alguém chegou",
+            "aqui é {name} quem chegou",
+            "aqui é a {name} alguém chegou",
+            "aqui é o {name} alguém chegou"
+          ]
+        },
+        {
+          "name": "CancelAppointmentIntent",
+          "slots": [
+            { "name": "time", "type": "AMAZON.TIME" },
+            { "name": "name", "type": "TherapistName" }
+          ],
+          "samples": [
+            "cancelar o atendimento das {time}",
+            "cancelar o atendimento de {time}",
+            "aqui é {name} cancelar o atendimento das {time}"
+          ]
+        },
+        {
+          "name": "BlockScheduleIntent",
+          "slots": [
+            { "name": "startTime", "type": "AMAZON.TIME" },
+            { "name": "endTime", "type": "AMAZON.TIME" },
+            { "name": "name", "type": "TherapistName" }
+          ],
+          "samples": [
+            "bloquear das {startTime} às {endTime}",
+            "bloquear a agenda das {startTime} às {endTime}",
+            "aqui é {name} bloquear das {startTime} às {endTime}"
+          ]
+        },
+        {
+          "name": "StartSessionIntent",
+          "slots": [{ "name": "name", "type": "TherapistName" }],
+          "samples": [
+            "iniciar sessão",
+            "começar atendimento",
+            "aqui é {name} iniciar sessão",
+            "aqui é {name} começar atendimento"
+          ]
+        },
+        {
+          "name": "FinishSessionIntent",
+          "slots": [{ "name": "name", "type": "TherapistName" }],
+          "samples": [
+            "finalizar sessão",
+            "terminar atendimento",
+            "aqui é {name} finalizar sessão",
+            "aqui é {name} terminar atendimento"
+          ]
+        },
+        {
+          "name": "IdentifySpeakerIntent",
+          "slots": [{ "name": "name", "type": "TherapistName" }],
+          "samples": ["{name}", "sou {name}", "sou a {name}", "sou o {name}", "é {name}", "é a {name}", "é o {name}"]
+        },
+        {
+          "name": "PresentationInviteIntent",
+          "slots": [],
+          "samples": [
+            "fazer o convite",
+            "faça o convite",
+            "qual é o convite",
+            "deixe o convite",
+            "fazer o convite final",
+            "encerrar a apresentação",
+            "fechar a apresentação"
+          ]
+        },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.RepeatIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        { "name": "AMAZON.YesIntent", "samples": [] },
+        { "name": "AMAZON.NoIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] }
+      ],
+      "types": [
+        {
+          "name": "TherapistName",
+          "values": [{ "id": "PLACEHOLDER", "name": { "value": "massoterapeuta" } }]
+        }
+      ]
+    },
+    "dialog": {
+      "delegationStrategy": "SKILL_RESPONSE",
+      "intents": [
+        {
+          "name": "CancelAppointmentIntent",
+          "confirmationRequired": true,
+          "prompts": { "confirmation": "Confirm.Intent.CancelAppointmentIntent" },
+          "slots": [
+            { "name": "time", "type": "AMAZON.TIME", "confirmationRequired": false, "elicitationRequired": false, "prompts": {} },
+            { "name": "name", "type": "TherapistName", "confirmationRequired": false, "elicitationRequired": false, "prompts": {} }
+          ]
+        },
+        {
+          "name": "BlockScheduleIntent",
+          "confirmationRequired": true,
+          "prompts": { "confirmation": "Confirm.Intent.BlockScheduleIntent" },
+          "slots": [
+            { "name": "startTime", "type": "AMAZON.TIME", "confirmationRequired": false, "elicitationRequired": false, "prompts": {} },
+            { "name": "endTime", "type": "AMAZON.TIME", "confirmationRequired": false, "elicitationRequired": false, "prompts": {} },
+            { "name": "name", "type": "TherapistName", "confirmationRequired": false, "elicitationRequired": false, "prompts": {} }
+          ]
+        }
+      ]
+    },
+    "prompts": [
+      {
+        "id": "Confirm.Intent.CancelAppointmentIntent",
+        "variations": [{ "type": "PlainText", "value": "Confirma o cancelamento do atendimento das {time}?" }]
+      },
+      {
+        "id": "Confirm.Intent.BlockScheduleIntent",
+        "variations": [{ "type": "PlainText", "value": "Confirma o bloqueio das {startTime} às {endTime}?" }]
+      }
+    ]
+  }
+}

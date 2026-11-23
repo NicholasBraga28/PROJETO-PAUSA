@@ -133,7 +133,7 @@ describe("Legacy booking routes (e2e)", () => {
     });
   });
 
-  it("TK-01.02: lists each therapist's availability under scheduleSlots", async () => {
+  it("TK-04.10 RF-01 RN-05: lists available slots and current duration when durationMinutes is omitted", async () => {
     const employee = await createEmployee("ana@example.com");
     const { therapist, room } = await createWednesdayMorningSlot();
 
@@ -143,23 +143,33 @@ describe("Legacy booking routes (e2e)", () => {
       .set("x-user-id", employee.id)
       .expect(200);
 
-    expect(response.body).toEqual([
+    expect(response.body).toEqual(
       expect.objectContaining({
-        id: therapist.id,
-        user: { name: "Bruno Lima" },
-        scheduleSlots: [
+        therapists: [{ id: therapist.id, name: "Bruno Lima" }],
+        slots: [
           expect.objectContaining({
             therapistId: therapist.id,
             roomId: room.id,
             startsAt: "2026-10-21T12:00:00.000Z",
+            endsAt: "2026-10-21T12:20:00.000Z",
+          }),
+          expect.objectContaining({
+            therapistId: therapist.id,
+            roomId: room.id,
+            startsAt: "2026-10-21T12:20:00.000Z",
+            endsAt: "2026-10-21T12:40:00.000Z",
+          }),
+          expect.objectContaining({
+            therapistId: therapist.id,
+            roomId: room.id,
+            startsAt: "2026-10-21T12:40:00.000Z",
             endsAt: "2026-10-21T13:00:00.000Z",
           }),
         ],
-        blocks: [],
-        appointments: [],
+        sessionDurationMinutes: 20,
+        spokenText: "Há 3 horários disponíveis. Primeiro: Bruno, às 9h.",
       }),
-    ]);
-    expect(response.body[0]).not.toHaveProperty("windows");
+    );
   });
 
   it("TK-01.02: the database rejects a schedule slot that ends before it starts", async () => {

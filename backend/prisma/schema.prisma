@@ -43,6 +43,7 @@ enum WaitlistStatus {
   CONVERTED
   CANCELLED
   EXPIRED
+  DECLINED
 
   @@map("waitlist_status")
 }
@@ -54,6 +55,7 @@ enum NotificationKind {
   CHECK_IN_CONFIRMATION
   POSSIBLE_NO_SHOW
   EMPLOYEE_CHECKED_IN
+  APPOINTMENT_CANCELLED_BY_THERAPIST
 
   @@map("notification_kind")
 }
@@ -99,7 +101,9 @@ model Location {
   code     LocationCode @unique
   name     String
   timezone String       @default("America/Sao_Paulo")
+  active   Boolean      @default(true)
   rooms    Room[]
+  waitlist WaitlistEntry[]
 
   @@map("locations")
 }
@@ -119,14 +123,14 @@ model Room {
 }
 
 model Therapist {
-  id                String             @id @default(uuid()) @db.Uuid
-  userId            String             @unique @map("user_id") @db.Uuid
-  user              User               @relation(fields: [userId], references: [id])
+  id                String                 @id @default(uuid()) @db.Uuid
+  userId            String                 @unique @map("user_id") @db.Uuid
+  user              User                   @relation(fields: [userId], references: [id])
   scheduleSlots     ScheduleSlot[]
   blocks            ScheduleBlock[]
   appointments      Appointment[]
   waitlist          WaitlistEntry[]
-  alexaDevices      AlexaDevice[]
+  alexaDevices      AlexaDeviceTherapist[]
   alexaPairingCodes AlexaPairingCode[]
 
   @@map("therapists")
@@ -194,6 +198,8 @@ model WaitlistEntry {
   employee        User           @relation(fields: [employeeId], references: [id])
   therapistId     String?        @map("therapist_id") @db.Uuid
   therapist       Therapist?     @relation(fields: [therapistId], references: [id])
+  locationId      String?        @map("location_id") @db.Uuid
+  location        Location?      @relation(fields: [locationId], references: [id])
   desiredStartsAt DateTime       @map("desired_starts_at") @db.Timestamptz(3)
   desiredEndsAt   DateTime       @map("desired_ends_at") @db.Timestamptz(3)
   status          WaitlistStatus @default(WAITING)
@@ -201,27 +207,33 @@ model WaitlistEntry {
   offerExpiresAt  DateTime?      @map("offer_expires_at") @db.Timestamptz(3)
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  notifications   Notification[]
 
   @@index([status, desiredStartsAt, desiredEndsAt, createdAt])
+  @@index([employeeId, createdAt])
   @@map("waitlist_entries")
 }
 
 model Notification {
-  id            String             @id @default(uuid()) @db.Uuid
-  appointmentId String?            @map("appointment_id") @db.Uuid
-  appointment   Appointment?       @relation(fields: [appointmentId], references: [id])
-  recipientId   String             @map("recipient_id") @db.Uuid
-  kind          NotificationKind
-  status        NotificationStatus @default(PENDING)
-  scheduledFor  DateTime           @map("scheduled_for") @db.Timestamptz(3)
-  sentAt        DateTime?          @map("sent_at") @db.Timestamptz(3)
-  message       String?
-  spokenText    String?            @map("spoken_text")
-  error         String?
-  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  id              String             @id @default(uuid()) @db.Uuid
+  appointmentId   String?            @map("appointment_id") @db.Uuid
+  appointment     Appointment?       @relation(fields: [appointmentId], references: [id])
+  waitlistEntryId String?            @map("waitlist_entry_id") @db.Uuid
+  waitlistEntry   WaitlistEntry?     @relation(fields: [waitlistEntryId], references: [id], onDelete: SetNull)
+  recipientId     String             @map("recipient_id") @db.Uuid
+  kind            NotificationKind
+  status          NotificationStatus @default(PENDING)
+  scheduledFor    DateTime           @map("scheduled_for") @db.Timestamptz(3)
+  sentAt          DateTime?          @map("sent_at") @db.Timestamptz(3)
+  readAt          DateTime?          @map("read_at") @db.Timestamptz(3)
+  message         String?
+  spokenText      String?            @map("spoken_text")
+  error           String?
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  @@index([status, scheduledFor])
   @@unique([appointmentId, recipientId, kind])
+  @@index([status, scheduledFor])
+  @@index([waitlistEntryId])
   @@map("notifications")
 }
 
@@ -241,15 +253,25 @@ model AuditEvent {
 }
 
 model AlexaDevice {
-  id                   String             @id @default(uuid()) @db.Uuid
-  deviceId             String             @unique @map("device_id")
-  therapistId          String             @map("therapist_id") @db.Uuid
-  therapist            Therapist          @relation(fields: [therapistId], references: [id])
-  pairedAt             DateTime           @default(now()) @map("paired_at") @db.Timestamptz(3)
+  id                   String                 @id @default(uuid()) @db.Uuid
+  deviceId             String                 @unique @map("device_id")
+  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  therapists           AlexaDeviceTherapist[]
   consumedPairingCodes AlexaPairingCode[]
 
-  @@index([therapistId])
   @@map("alexa_devices")
+}
+
+model AlexaDeviceTherapist {
+  alexaDeviceId String      @map("alexa_device_id") @db.Uuid
+  alexaDevice   AlexaDevice @relation(fields: [alexaDeviceId], references: [id], onDelete: Cascade)
+  therapistId   String      @map("therapist_id") @db.Uuid
+  therapist     Therapist   @relation(fields: [therapistId], references: [id])
+  pairedAt      DateTime    @default(now()) @map("paired_at") @db.Timestamptz(3)
+
+  @@id([alexaDeviceId, therapistId])
+  @@index([therapistId])
+  @@map("alexa_device_therapists")
 }
 
 model AlexaPairingCode {
@@ -290,4 +312,15 @@ model BusinessRules {
   updatedAt                            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("business_rules")
+}
+
+model FeedbackResponse {
+  id                       String  @id @default(uuid()) @db.Uuid
+  bookingEase              Int     @map("booking_ease")
+  technologySatisfaction   Int     @map("technology_satisfaction")
+  serviceRating            Int     @map("service_rating")
+  recommendationScore      Int     @map("recommendation_score")
+  comment                  String?
+
+  @@map("feedback_responses")
 }

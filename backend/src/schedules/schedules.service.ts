@@ -1,12 +1,21 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { Prisma, UserStatus } from "@prisma/client";
 import { ACTIVE_STATUSES } from "../appointments/appointment-status";
 import { AuditService } from "../audit/audit.service";
+import { CLOCK, Clock } from "../common/clock/clock";
 import { PolicyService } from "../domain/policy.service";
 import { messages } from "../messages/catalog";
 import { PrismaService } from "../prisma/prisma.service";
-import { isRetryableTransactionError } from "../prisma/transaction-errors";
+import { inSerializableTransaction } from "../prisma/serializable-transaction";
 import { addLocalDays, datePartsAt, localDateTimeToUtc } from "../reports/report-date";
+import { CopySchedulesDto } from "./dto/copy-schedules.dto";
 import { CreateScheduleSlotDto } from "./dto/create-schedule-slot.dto";
 import { QuerySchedulesDto } from "./dto/query-schedules.dto";
 import { ScheduleSlotDto } from "./dto/schedule-slot.dto";
@@ -15,7 +24,6 @@ import { ScheduleHasAppointmentsException } from "./schedule-has-appointments.ex
 
 const FILTER_TIMEZONE = "America/Sao_Paulo";
 const AUDIT_ENTITY = "ScheduleSlot";
-const MAX_TRANSACTION_ATTEMPTS = 3;
 
 const SCHEDULE_SLOT_SELECT = {
   id: true,
@@ -32,6 +40,10 @@ type PlannedSlot = Period & Readonly<{ therapistId: string; roomId: string; repl
 
 type DateRange = Readonly<{ from: Date; to: Date }>;
 
+export type SkippedCopyDate = Readonly<{ date: string; message: string }>;
+
+export type ScheduleCopyResult = Readonly<{ created: ScheduleSlotDto[]; skipped: SkippedCopyDate[] }>;
+
 const overlaps = (first: Period, second: Period): boolean =>
   first.startsAt < second.endsAt && second.startsAt < first.endsAt;
 
@@ -45,6 +57,18 @@ const localDayRange = (date: string, timezone: string): DateRange => ({
 
 const isWithinOneLocalDay = ({ startsAt, endsAt }: Period, timezone: string): boolean =>
   datePartsAt(startsAt, timezone).date === datePartsAt(endsAt, timezone).date;
+
+const copiedTo = (slot: ScheduleSlotDto, sourceDate: string, targetDate: string): PlannedSlot => {
+  const shift =
+    localDayRange(targetDate, FILTER_TIMEZONE).from.getTime() -
+    localDayRange(sourceDate, FILTER_TIMEZONE).from.getTime();
+  return {
+    therapistId: slot.therapistId,
+    roomId: slot.roomId,
+    startsAt: new Date(slot.startsAt.getTime() + shift),
+    endsAt: new Date(slot.endsAt.getTime() + shift),
+  };
+};
 
 const SLOT_APPOINTMENT_SELECT = {
   id: true,
@@ -81,6 +105,7 @@ export class SchedulesService {
     private readonly prisma: PrismaService,
     private readonly policy: PolicyService,
     private readonly audit: AuditService,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async create(actorId: string, input: CreateScheduleSlotDto): Promise<ScheduleSlotDto> {
@@ -91,9 +116,33 @@ export class SchedulesService {
     return scheduleSlot;
   }
 
-  async list(query: QuerySchedulesDto): Promise<ScheduleSlotDto[]> {
+  async copy(actorId: string, input: CopySchedulesDto): Promise<ScheduleCopyResult> {
+    this.assertValidCopyTargets(input);
+    const result = await inSerializableTransaction(this.prisma, async (tx) => {
+      if (input.therapistId) await this.assertActiveTherapist(input.therapistId, tx);
+      const source = await this.list({ date: input.sourceDate, therapistId: input.therapistId }, tx);
+      if (source.length === 0) throw new BadRequestException(messages.errors.scheduleCopyEmptySource);
+      const created: ScheduleSlotDto[] = [];
+      const skipped: SkippedCopyDate[] = [];
+      for (const date of input.targetDates) {
+        const planned = source.map((slot) => copiedTo(slot, input.sourceDate, date));
+        const refusal = await this.refusalOf(planned, tx);
+        if (refusal) skipped.push({ date, message: refusal });
+        else
+          for (const slot of planned)
+            created.push(await tx.scheduleSlot.create({ data: slot, select: SCHEDULE_SLOT_SELECT }));
+      }
+      return { created, skipped };
+    });
+    for (const slot of result.created) {
+      await this.audit.record(actorId, "SCHEDULE_SLOT_CREATED", AUDIT_ENTITY, slot.id, auditData(slot));
+    }
+    return { created: result.created.sort(byStartsAt), skipped: result.skipped };
+  }
+
+  async list(query: QuerySchedulesDto, client: Prisma.TransactionClient = this.prisma): Promise<ScheduleSlotDto[]> {
     const range = this.dateRange(query);
-    const scheduleSlots = await this.prisma.scheduleSlot.findMany({
+    const scheduleSlots = await client.scheduleSlot.findMany({
       where: {
         startsAt: { gte: range.from, lt: range.to },
         therapistId: query.therapistId,
@@ -106,7 +155,7 @@ export class SchedulesService {
   }
 
   async update(actorId: string, id: string, input: UpdateScheduleSlotDto): Promise<ScheduleSlotDto> {
-    const scheduleSlot = await this.inSerializableTransaction(async (tx) => {
+    const scheduleSlot = await inSerializableTransaction(this.prisma, async (tx) => {
       const current = await this.findOrFail(id, tx);
       const planned = {
         therapistId: current.therapistId,
@@ -128,7 +177,7 @@ export class SchedulesService {
   }
 
   async remove(actorId: string, id: string): Promise<void> {
-    const removed = await this.inSerializableTransaction(async (tx) => {
+    const removed = await inSerializableTransaction(this.prisma, async (tx) => {
       const current = await this.findOrFail(id, tx);
       assertNoAffectedAppointments(await this.activeAppointmentsOfTherapistDuring(tx, current));
       await tx.scheduleSlot.delete({ where: { id } });
@@ -137,22 +186,28 @@ export class SchedulesService {
     await this.audit.record(actorId, "SCHEDULE_SLOT_DELETED", AUDIT_ENTITY, id, auditData(removed));
   }
 
+  private assertValidCopyTargets({ sourceDate, targetDates }: CopySchedulesDto): void {
+    const today = datePartsAt(this.clock.now(), FILTER_TIMEZONE).date;
+    const isRepeated = new Set(targetDates).size !== targetDates.length;
+    if (isRepeated || targetDates.some((date) => date <= today || date === sourceDate)) {
+      throw new BadRequestException(messages.errors.scheduleCopyInvalidTargets);
+    }
+  }
+
+  private async refusalOf(planned: readonly PlannedSlot[], tx: Prisma.TransactionClient): Promise<string | null> {
+    try {
+      for (const slot of planned) await this.assertCanSchedule(slot, tx);
+      return null;
+    } catch (error) {
+      if (error instanceof HttpException) return error.message;
+      throw error;
+    }
+  }
+
   private async findOrFail(id: string, client: Prisma.TransactionClient = this.prisma): Promise<ScheduleSlotDto> {
     const scheduleSlot = await client.scheduleSlot.findUnique({ where: { id }, select: SCHEDULE_SLOT_SELECT });
     if (!scheduleSlot) throw new NotFoundException(messages.errors.scheduleNotFound);
     return scheduleSlot;
-  }
-
-  private async inSerializableTransaction<T>(work: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-    for (let attempt = 1; ; attempt++) {
-      try {
-        return await this.prisma.$transaction(work, {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        });
-      } catch (error) {
-        if (attempt >= MAX_TRANSACTION_ATTEMPTS || !isRetryableTransactionError(error)) throw error;
-      }
-    }
   }
 
   private activeAppointmentsOfTherapistDuring(

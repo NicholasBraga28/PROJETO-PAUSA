@@ -29,6 +29,7 @@ const SPOKEN_ACTIONS: ReadonlyMap<string, string> = new Map([
   ["SESSION_STARTED", messages.reports.auditActionNames.sessionStarted],
   ["SESSION_FINISHED", messages.reports.auditActionNames.sessionFinished],
   ["SESSION_AUTO_COMPLETED", messages.reports.auditActionNames.sessionAutoCompleted],
+  ["APPOINTMENT_MARKED_NO_SHOW", messages.reports.auditActionNames.appointmentMarkedNoShow],
 ]);
 
 @Injectable()

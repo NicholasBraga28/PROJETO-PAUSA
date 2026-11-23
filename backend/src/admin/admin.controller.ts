@@ -3,15 +3,12 @@ import { CurrentActor } from "../auth/decorators/current-actor.decorator";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { RequestActor } from "../auth/request-actor";
 import { AdminService } from "./admin.service";
-import { AvailabilityDto, BlockDto } from "../common/dto";
+import { AvailabilityDto } from "../common/dto";
 
 @Controller("admin")
 @Roles("HR")
 export class AdminController {
   constructor(private readonly admin: AdminService) {}
-  @Post("blocks") block(@CurrentActor() actor: RequestActor, @Body() body: BlockDto) {
-    return this.admin.block(body, actor.id);
-  }
   @Post("therapists/:id/availability") availability(
     @CurrentActor() actor: RequestActor,
     @Param("id") id: string,

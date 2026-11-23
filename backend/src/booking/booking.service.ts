@@ -8,6 +8,7 @@ import { CLOCK, Clock } from "../common/clock/clock";
 import { CreateAppointmentDto } from "../common/dto";
 import { messages } from "../messages/catalog";
 import {
+  ACTIVE_STATUSES,
   SLOT_OCCUPYING_STATUSES,
   StatusTransitionActor,
   assertTransitionAllowed,
@@ -17,6 +18,7 @@ import { firstNameOf } from "../common/names/first-name";
 import { AppointmentEvents } from "./appointment-events";
 import { QueryMyAppointmentsDto } from "./dto/query-my-appointments.dto";
 import { NOTIFICATION_CHANNEL, NotificationChannel } from "../notifications/notification-channel";
+import { atTimeOf } from "../notifications/spoken-text";
 
 @Injectable()
 export class BookingService {
@@ -29,26 +31,16 @@ export class BookingService {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
-  async availability(from: Date, to: Date) {
-    this.policy.assertPeriod(from, to);
-    return this.prisma.therapist.findMany({
-      where: { user: { status: "ACTIVE" }, scheduleSlots: { some: { startsAt: { lte: to }, endsAt: { gte: from } } } },
-      select: {
-        id: true,
-        user: { select: { name: true } },
-        scheduleSlots: {
-          where: { startsAt: { lt: to }, endsAt: { gt: from }, room: { active: true } },
-          orderBy: { startsAt: "asc" },
-          include: { room: { include: { location: true } } },
-        },
-        blocks: { where: { startsAt: { lt: to }, endsAt: { gt: from } }, orderBy: { startsAt: "asc" } },
-        appointments: {
-          where: { status: { in: [...SLOT_OCCUPYING_STATUSES] }, startsAt: { lt: to }, endsAt: { gt: from } },
-          orderBy: { startsAt: "asc" },
-          select: { startsAt: true, endsAt: true },
-        },
-      },
-    });
+  async availability(from: Date, to: Date, therapistId?: string, locationCode?: LocationCode, employeeId?: string) {
+    return this.availableSlots(
+      from,
+      to,
+      this.policy.sessionDurationMinutes,
+      therapistId,
+      locationCode,
+      true,
+      employeeId,
+    );
   }
 
   async availableSlots(
@@ -58,6 +50,7 @@ export class BookingService {
     therapistId?: string,
     locationCode?: LocationCode,
     includeSpokenText = false,
+    employeeId?: string,
   ) {
     this.policy.assertPeriod(from, to);
     if (!this.policy.isAllowedDuration(durationMinutes)) throw new BadRequestException(messages.errors.invalidDuration);
@@ -83,12 +76,22 @@ export class BookingService {
             room: { active: true, ...(locationCode ? { location: { code: locationCode } } : {}) },
           },
           orderBy: { startsAt: "asc" },
-          include: { room: { include: { location: true } } },
+          include: {
+            room: {
+              include: {
+                appointments: {
+                  where: { status: { in: [...SLOT_OCCUPYING_STATUSES] }, startsAt: { lt: to }, endsAt: { gt: from } },
+                  select: { startsAt: true, endsAt: true, employeeId: true },
+                },
+                location: { select: { id: true, code: true, name: true, timezone: true } },
+              },
+            },
+          },
         },
         blocks: { where: { startsAt: { lt: to }, endsAt: { gt: from } }, select: { startsAt: true, endsAt: true } },
         appointments: {
           where: { status: { in: [...SLOT_OCCUPYING_STATUSES] }, startsAt: { lt: to }, endsAt: { gt: from } },
-          select: { startsAt: true, endsAt: true },
+          select: { startsAt: true, endsAt: true, employeeId: true },
         },
       },
     });
@@ -96,7 +99,11 @@ export class BookingService {
       .flatMap((t) =>
         t.scheduleSlots.flatMap((scheduleSlot) =>
           slotsForWindow(
-            { startsAt: scheduleSlot.startsAt, endsAt: scheduleSlot.endsAt, busy: [...t.blocks, ...t.appointments] },
+            {
+              startsAt: scheduleSlot.startsAt,
+              endsAt: scheduleSlot.endsAt,
+              busy: [...t.blocks, ...t.appointments, ...scheduleSlot.room.appointments],
+            },
             { durationMinutes, stepMinutes: this.policy.slotStepMinutes, now: this.clock.now() },
           ).map((slot) => ({
             ...slot,
@@ -110,7 +117,57 @@ export class BookingService {
         ),
       )
       .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
-    const response = { therapists: therapists.map((t) => ({ id: t.id, name: t.user.name })), slots };
+    const waitlistSlots = includeSpokenText
+      ? therapists
+          .flatMap((therapist) =>
+            therapist.scheduleSlots.flatMap((scheduleSlot) => {
+              const appointments = [...therapist.appointments, ...scheduleSlot.room.appointments];
+              return slotsForWindow(
+                { startsAt: scheduleSlot.startsAt, endsAt: scheduleSlot.endsAt, busy: [] },
+                { durationMinutes, stepMinutes: this.policy.slotStepMinutes, now: this.clock.now() },
+              )
+                .filter(
+                  (candidate) =>
+                    !therapist.blocks.some(
+                      (block) => block.startsAt < candidate.endsAt && block.endsAt > candidate.startsAt,
+                    ) &&
+                    appointments.some(
+                      (appointment) =>
+                        appointment.employeeId !== employeeId &&
+                        appointment.startsAt < candidate.endsAt &&
+                        appointment.endsAt > candidate.startsAt,
+                    ),
+                )
+                .map((candidate) => ({
+                  ...candidate,
+                  therapistId: therapist.id,
+                  therapistName: therapist.user.name,
+                  roomId: scheduleSlot.roomId,
+                  roomName: scheduleSlot.room.name,
+                  location: scheduleSlot.room.location,
+                  locationCode: scheduleSlot.room.location.code,
+                }));
+            }),
+          )
+          .reduce<typeof slots>((unique, candidate) => {
+            const key = `${candidate.therapistId}:${candidate.roomId}:${candidate.startsAt.getTime()}:${candidate.endsAt.getTime()}`;
+            if (
+              !unique.some(
+                (slot) =>
+                  `${slot.therapistId}:${slot.roomId}:${slot.startsAt.getTime()}:${slot.endsAt.getTime()}` === key,
+              )
+            )
+              unique.push(candidate);
+            return unique;
+          }, [])
+          .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+      : [];
+    const response = {
+      therapists: therapists.map((t) => ({ id: t.id, name: t.user.name })),
+      slots,
+      ...(includeSpokenText ? { waitlistSlots } : {}),
+      ...(includeSpokenText ? { sessionDurationMinutes: this.policy.sessionDurationMinutes } : {}),
+    };
     if (!includeSpokenText) return response;
     if (slots.length === 0) return { ...response, spokenText: messages.availability.noSlots };
     const firstSlot = slots[0];
@@ -280,8 +337,13 @@ export class BookingService {
       roomName: appointment.room.name,
       locationCode: appointment.room.location.code,
     }));
-    const upcoming = items.filter((appointment) => appointment.startsAt >= now);
-    const past = query.includePast === false ? [] : items.filter((appointment) => appointment.startsAt < now);
+    const upcoming = items.filter(
+      (appointment) => appointment.startsAt >= now && ACTIVE_STATUSES.includes(appointment.status),
+    );
+    const past =
+      query.includePast === false
+        ? []
+        : items.filter((appointment) => appointment.startsAt < now || !ACTIVE_STATUSES.includes(appointment.status));
     return {
       upcoming,
       past,
@@ -339,7 +401,12 @@ export class BookingService {
       where: { appointmentId: id, status: "PENDING" },
       data: { status: "CANCELLED" },
     });
-    await this.appointmentEvents.emitCancelled({ appointmentId: id, employeeId: actorId });
+    await this.appointmentEvents.emitCancelled({
+      appointmentId: id,
+      employeeId: current.employeeId,
+      cancelledById: actorId,
+      cancelledByRole: actor,
+    });
     const details = await this.prisma.appointment.findUniqueOrThrow({
       where: { id },
       include: {
@@ -372,7 +439,21 @@ export class BookingService {
       },
       orderBy: { startsAt: "asc" },
     });
-    if (!appointment) throw new NotFoundException(messages.errors.noAppointmentForRoom);
+    if (!appointment) {
+      const alreadyCheckedIn = await this.prisma.appointment.findFirst({
+        where: {
+          employeeId: actorId,
+          roomId: room.id,
+          status: "CHECKED_IN",
+          startsAt: {
+            gte: new Date(now.getTime() - this.policy.lateArrivalToleranceMs),
+            lte: new Date(now.getTime() + this.policy.checkInEarlyMs),
+          },
+        },
+      });
+      if (alreadyCheckedIn) throw new ConflictException(messages.errors.checkInUnavailable);
+      throw new NotFoundException(messages.errors.noAppointmentForRoom);
+    }
     try {
       this.policy.assertCanCheckIn(appointment.startsAt);
     } catch (error) {
@@ -408,21 +489,18 @@ export class BookingService {
       message: messages.notifications.checkInConfirmed(dateTime, details.room.name),
       spokenText: messages.notifications.checkInConfirmed(dateTime, details.room.name),
     });
+    const arrivalText = messages.notifications.employeeArrived(
+      firstNameOf(details.employee.name),
+      atTimeOf(details.startsAt),
+      details.room.name,
+    );
     await this.notificationChannel.notify({
       appointmentId: appointment.id,
       recipientId: details.therapist.user.id,
       kind: NotificationKind.EMPLOYEE_CHECKED_IN,
       scheduledFor: checkedInAt,
-      message: messages.notifications.employeeArrived(
-        firstNameOf(details.employee.name),
-        formatSpokenHour(details.startsAt),
-        details.room.name,
-      ),
-      spokenText: messages.notifications.employeeArrived(
-        firstNameOf(details.employee.name),
-        formatSpokenHour(details.startsAt),
-        details.room.name,
-      ),
+      message: arrivalText,
+      spokenText: arrivalText,
     });
     await this.audit.record(actorId, "APPOINTMENT_CHECKED_IN", "Appointment", appointment.id);
     return {

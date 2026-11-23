@@ -35,7 +35,10 @@ describe("Alexa pairing tables (e2e)", () => {
   };
 
   const pairDevice = (deviceId: string, owner: Therapist) =>
-    prisma.alexaDevice.create({ data: { deviceId, therapistId: owner.id } });
+    prisma.alexaDevice.create({ data: { deviceId, therapists: { create: { therapistId: owner.id } } } });
+
+  const linkTherapist = (device: AlexaDevice, linked: Therapist) =>
+    prisma.alexaDeviceTherapist.create({ data: { alexaDeviceId: device.id, therapistId: linked.id } });
 
   const createPairingCode = (code: string) =>
     prisma.alexaPairingCode.create({
@@ -51,12 +54,30 @@ describe("Alexa pairing tables (e2e)", () => {
     await expect(duplicate).rejects.toThrow(/Unique constraint failed on the fields: \(`device_id`\)/);
   });
 
+  it("RN-17: links several therapists to the same device", async () => {
+    const diana = await createTherapist("diana@example.com", "Diana Rocha");
+    const device = await pairDevice(AMAZON_DEVICE_ID, therapist);
+
+    await linkTherapist(device, diana);
+
+    const linked = await prisma.alexaDeviceTherapist.findMany({ where: { alexaDeviceId: device.id } });
+    expect(linked.map(({ therapistId }) => therapistId).sort()).toEqual([therapist.id, diana.id].sort());
+  });
+
+  it("RN-17: does not link the same therapist twice to the same device", async () => {
+    const device = await pairDevice(AMAZON_DEVICE_ID, therapist);
+
+    const duplicate = linkTherapist(device, therapist);
+
+    await expect(duplicate).rejects.toThrow(/Unique constraint failed/);
+  });
+
   it("RF-17: accepts a second device for a therapist who already has one", async () => {
     await pairDevice(AMAZON_DEVICE_ID, therapist);
 
     const secondDevice = pairDevice(OTHER_AMAZON_DEVICE_ID, therapist);
 
-    await expect(secondDevice).resolves.toEqual(expect.objectContaining({ therapistId: therapist.id }));
+    await expect(secondDevice).resolves.toEqual(expect.objectContaining({ deviceId: OTHER_AMAZON_DEVICE_ID }));
   });
 
   it("RF-17: rejects a second unused pairing code with the same value", async () => {

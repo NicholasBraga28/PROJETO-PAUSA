@@ -18,13 +18,21 @@ export class BookingController {
   ) {}
 
   @Get("availability")
-  availability(@Query() query: AvailabilityQueryDto) {
+  availability(@CurrentActor() actor: RequestActor, @Query() query: AvailabilityQueryDto) {
     const from = new Date(query.from);
     const to = new Date(query.to);
     if (query.durationMinutes !== undefined) {
-      return this.booking.availableSlots(from, to, query.durationMinutes, query.therapistId, query.locationCode, true);
+      return this.booking.availableSlots(
+        from,
+        to,
+        query.durationMinutes,
+        query.therapistId,
+        query.locationCode,
+        true,
+        actor.id,
+      );
     }
-    return this.booking.availability(from, to);
+    return this.booking.availability(from, to, query.therapistId, query.locationCode, actor.id);
   }
 
   @Get("slots")
@@ -62,6 +70,11 @@ export class BookingController {
     return this.waitlistService.join(actor.id, body);
   }
 
+  @Get("waitlist")
+  waitlistMine(@CurrentActor() actor: RequestActor) {
+    return this.waitlistService.listMine(actor.id);
+  }
+
   @Delete("waitlist/:id")
   @HttpCode(204)
   leaveWaitlist(@CurrentActor() actor: RequestActor, @Param("id") id: string) {
@@ -71,6 +84,12 @@ export class BookingController {
   @Post("waitlist/:id/accept")
   acceptWaitlist(@CurrentActor() actor: RequestActor, @Param("id") id: string) {
     return this.waitlistService.accept(actor.id, id);
+  }
+
+  @Post("waitlist/:id/decline")
+  @HttpCode(204)
+  declineWaitlist(@CurrentActor() actor: RequestActor, @Param("id") id: string) {
+    return this.waitlistService.decline(actor.id, id);
   }
 
   @Post("check-in/:token")

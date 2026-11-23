@@ -1,0 +1,157 @@
+@media (forced-colors: active) {
+  :root {
+    --focus: Highlight;
+    --bw: 1px;
+  }
+
+  .brand-logo-accent {
+    stroke: currentColor;
+  }
+
+  .field input[data-focused],
+  .field select:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  .cta,
+  .home-chat-prompt,
+  .hero-go,
+  .hero-arrow,
+  .reminder-link,
+  .skip,
+  .nav-in,
+  .theme,
+  .reminder {
+    border: 1px solid ButtonText;
+  }
+  .cta[data-disabled],
+  .danger-btn[data-disabled],
+  .day[data-disabled] .dn {
+    color: GrayText;
+    border-color: GrayText;
+  }
+
+  .pill,
+  .bar .sel {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+  .theme-opt[data-selected] .theme-body,
+  .chip[data-selected] .chip-body,
+  .slot[data-selected],
+  .day[data-selected] .dn {
+    forced-color-adjust: none;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  .scene-pause[data-selected] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+
+  .day .dn,
+  .badge,
+  .status,
+  .avatar {
+    border: 1px solid CanvasText;
+  }
+  .summary,
+  .card,
+  .profile-card,
+  .a11y-section,
+  .support-group,
+  .therapist-region,
+  .hr-heading,
+  .hr-panel,
+  .hr-create,
+  .hr-business-rule,
+  .hr-room-card,
+  .hr-schedule-card,
+  .notice,
+  .dialog {
+    outline: 1px solid CanvasText;
+  }
+
+  .therapist-region-link,
+  .hr-navigation a,
+  .audit-filter-disclosure > summary,
+  .hr-room-filter-disclosure > summary {
+    border-color: ButtonText;
+  }
+
+  .hr-room-filter-disclosure,
+  .hr-room-check-in,
+  .hr-room-card > .hr-help {
+    border-color: ButtonText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .hr-room-status {
+    border-color: ButtonText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .therapist-region {
+    border-color: CanvasText;
+  }
+
+  .therapist-region-link,
+  .nav-profile-mobile {
+    border-color: ButtonText;
+  }
+
+  .therapist-appointment {
+    border-color: CanvasText;
+    background: Canvas;
+  }
+
+  .therapist-appointment-status dd {
+    border-inline-start-color: CanvasText;
+    background: Canvas;
+  }
+
+  .therapist-block-group {
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .therapist-region.therapist-now {
+    border-color: CanvasText;
+    border-inline-start-color: Highlight;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .bar,
+  .legend .l-busy {
+    forced-color-adjust: none;
+    background: Canvas repeating-linear-gradient(135deg, GrayText 0 2px, transparent 2px 7px);
+    outline: 1px solid CanvasText;
+  }
+  .bar .free,
+  .bar .past,
+  .legend .l-free {
+    forced-color-adjust: none;
+    background: Canvas;
+    border-color: CanvasText;
+  }
+  .legend .l-sel {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  .bar .ghost {
+    border-color: Highlight;
+  }
+
+  .hero-logo,
+  .hero-shield {
+    display: none;
+  }
+}

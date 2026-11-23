@@ -61,6 +61,7 @@ describe("My appointments (e2e)", () => {
     const employee = await createEmployee("employee@example.com", "Carlos Lima");
     const otherEmployee = await createEmployee("other@example.com", "Other Employee");
     await createAppointment(employee.id, "2026-10-18T14:00:00Z", "CANCELLED");
+    await createAppointment(employee.id, "2026-10-20T13:00:00Z", "CANCELLED");
     await createAppointment(employee.id, "2026-10-21T15:00:00Z");
     await createAppointment(employee.id, "2026-10-20T14:00:00Z");
     await createAppointment(otherEmployee.id, "2026-10-21T13:00:00Z");
@@ -71,12 +72,16 @@ describe("My appointments (e2e)", () => {
       .expect(200);
 
     expect(response.body.upcoming).toHaveLength(2);
-    expect(response.body.past).toHaveLength(1);
+    expect(response.body.past).toHaveLength(2);
     expect(response.body.upcoming.map(({ startsAt }: { startsAt: string }) => startsAt)).toEqual([
       "2026-10-20T14:00:00.000Z",
       "2026-10-21T15:00:00.000Z",
     ]);
+    expect(response.body.upcoming.every(({ status }: { status: string }) => status !== "CANCELLED")).toBe(true);
     expect(response.body.past[0].status).toBe("CANCELLED");
+    expect(response.body.past[1]).toEqual(
+      expect.objectContaining({ status: "CANCELLED", startsAt: "2026-10-20T13:00:00.000Z" }),
+    );
     expect(response.body.spokenText).toMatch(/^Você tem 2 próximos agendamentos\./);
   });
 

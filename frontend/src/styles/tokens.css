@@ -1,0 +1,21 @@
+:root {
+  --bw: 1px;
+  --nav-clearance: 7rem;
+  --target: 2.75rem;
+  --font: "Open Sans Variable", "Open Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --display-stretch: 87.5%;
+  --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --elev:
+    0 4px 5px rgb(var(--shadow) / 0.04), 0 8px 15px rgb(var(--shadow) / 0.03), 0 30px 50px rgb(var(--shadow) / 0.09);
+  --elev-btn: 0 4px 5px rgb(var(--shadow) / 0.06), 0 8px 15px rgb(var(--shadow) / 0.06);
+}
+@media (max-width: 55rem) {
+  :root {
+    --nav-clearance: 12rem;
+  }
+}
+@media (max-height: 30rem) {
+  :root {
+    --nav-clearance: 0px;
+  }
+}

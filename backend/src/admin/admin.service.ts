@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
-import { AvailabilityDto, BlockDto } from "../common/dto";
+import { AvailabilityDto } from "../common/dto";
 import { PolicyService } from "../domain/policy.service";
 import { messages } from "../messages/catalog";
 
@@ -12,19 +12,6 @@ export class AdminService {
     private readonly audit: AuditService,
     private readonly policy: PolicyService,
   ) {}
-
-  async block(input: BlockDto, actorId: string) {
-    const startsAt = new Date(input.startsAt),
-      endsAt = new Date(input.endsAt);
-    this.policy.assertPeriod(startsAt, endsAt);
-    const therapist = await this.prisma.therapist.findUnique({ where: { id: input.therapistId } });
-    if (!therapist) throw new NotFoundException(messages.errors.therapistNotFound);
-    const block = await this.prisma.scheduleBlock.create({
-      data: { therapistId: input.therapistId, startsAt, endsAt, reason: input.reason, createdById: actorId },
-    });
-    await this.audit.record(actorId, "SCHEDULE_BLOCK_CREATED", "ScheduleBlock", block.id);
-    return block;
-  }
 
   async addAvailability(therapistId: string, input: AvailabilityDto, actorId: string) {
     const startsAt = new Date(input.startsAt),

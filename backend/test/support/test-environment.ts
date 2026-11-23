@@ -1,3 +1,4 @@
+import { ALEXA_TEST_SKILL_ID } from "./alexa-envelopes";
 import { testDatabaseUrl } from "./test-database";
 
 const environmentIsolatedFromDotEnv: Record<string, string> = {
@@ -24,8 +25,7 @@ const environmentIsolatedFromDotEnv: Record<string, string> = {
   LUNCH_END: "13:00",
   WORK_END: "18:00",
   NOTIFICATION_WEBHOOK_URL: "",
-  ALEXA_SKILL_ID: "",
-  ALEXA_USER_MAP: "",
+  ALEXA_SKILL_ID: ALEXA_TEST_SKILL_ID,
   BOOTSTRAP_ADMIN_EMAIL: "",
   BOOTSTRAP_ADMIN_NAME: "",
 };
